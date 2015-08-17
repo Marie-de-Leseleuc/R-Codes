@@ -1,0 +1,276 @@
+----- Personal Script -----------------------------------------------------------------
+---------------------------------------------------------------------------------------
+  
+  ## Goal: Predict category of crime
+  
+  #Set directory
+  
+  setwd("C:\\Users\\mdeleseleuc\\Documents")
+
+#Read document
+
+train <- read.csv("train.csv", header = TRUE,sep = ",")
+test <- read.csv("test.csv", header = TRUE,sep = ",")
+
+head(test)
+head(train)
+
+# Alternative 
+
+Train <- read.csv("Train.csv", stringsAsFactors=FALSE)
+
+# Verify type 
+
+str(train$X) 
+
+# Let's combine the documents
+
+train$Id <- NA
+test$Category <- NA
+test$Descript <- NA
+test$Resolution <- NA
+combi <- rbind(train, test)
+
+head(combi)
+
+# Extract month, year, date & hours from Dates 
+
+combi$Hours <- format(as.POSIXct(combi$Dates, format="%Y-%m-%d %H:%M:%S"), format="%H:%M:%S") # type = chr
+
+combi$Dates2 <- as.Date(combi$Dates, format="%Y-%m-%d") # type = Date
+
+combi$Year <- format(combi$Dates2,'%Y')
+combi$Month <- format(combi$Dates2,'%m')
+combi$Day <- format(combi$Dates2,'%d')
+combi$Week <- format(combi$Dates2,'%W')
+
+# Create a Location variable 
+
+combi$Loc <- paste0('(',round(combi$X,2),',',round(combi$Y,2),')') 
+
+# Create a new factor: Morning; Evening; Night
+
+#Evening = 6:00 PM - 9:00 PM
+#Night = 9:00 PM - 11:59 PM
+#Midnight = 12:00 AM
+#Morning = 12:01 AM - 11:59 AM 
+
+library(lubridate)
+
+combi$Time <- (hour(strptime(combi$Hours, format = "%T",tz=""))
+               + minute(strptime(combi$Hours, format = "%T",tz=""))/60 
+               + second(strptime(combi$Hours, format = "%T",tz=""))/3600) # type = num
+
+aMidnight <- (hour(strptime('00:00:00', format = "%T")) 
+              + minute(strptime('00:00:00', format = "%T"))/60 
+              + second(strptime('00:00:00', format = "%T"))/3600)
+
+bNoon <- (hour(strptime('11:59:59', format = "%T")) 
+          + minute(strptime('11:59:59', format = "%T"))/60 
+          + second(strptime('11:59:59', format = "%T"))/3600)
+
+Noon <- (hour(strptime('12:00:00', format = "%T")) 
+         + minute(strptime('12:00:00', format = "%T"))/60 
+         + second(strptime('12:00:00', format = "%T"))/3600)
+
+bEvening <- (hour(strptime('17:59:59', format = "%T")) 
+             + minute(strptime('17:59:59', format = "%T"))/60 
+             + second(strptime('17:59:59', format = "%T"))/3600)
+
+Evening <- (hour(strptime('18:00:00', format = "%T")) 
+            + minute(strptime('18:00:00', format = "%T"))/60 
+            + second(strptime('18:00:00', format = "%T"))/3600)
+
+bNight <- (hour(strptime('20:59:59', format = "%T")) 
+           + minute(strptime('20:59:59', format = "%T"))/60 
+           + second(strptime('20:59:59', format = "%T"))/3600)
+
+Night <- (hour(strptime('21:00:00', format = "%T")) 
+          + minute(strptime('21:00:00', format = "%T"))/60 
+          + second(strptime('21:00:00', format = "%T"))/3600)
+
+Midnight <- (hour(strptime('23:59:59', format = "%T")) 
+             + minute(strptime('23:59:59', format = "%T"))/60 
+             + second(strptime('23:59:59', format = "%T"))/3600)
+
+combi$Period[(combi$Time >= aMidnight) & (combi$Time <= bNoon)] <- 'Morning' # type = chr
+combi$Period[(combi$Time >= Noon) & (combi$Time <= bEvening)] <- 'Afternoon'
+combi$Period[(combi$Time >= Evening) & (combi$Time <= bNight) ] <- 'Evening'
+combi$Period[(combi$Time >= Night) & (combi$Time <= Midnight) ] <- 'Night'
+
+# Create a new factor: Spring; Summer; Automn; Winter 
+
+combi$Seasona <- as.numeric(paste(format(combi$Dates2, "%m"), 
+                                  format(combi$Dates2, "%d"), sep = "", collapse = NULL))
+
+
+combi$Season[combi$Seasona >= 320 & combi$Seasona < 621] <- 'Spring' # type = chr
+combi$Season[combi$Seasona >= 621 & combi$Seasona < 923 ] <- 'Summer'
+combi$Season[combi$Seasona >= 923 & combi$Seasona < 1222 ] <- 'Automn'
+combi$Season[combi$Seasona >= 1222 | combi$Seasona < 320 ] <- 'Winter'
+
+# Create a new factor: Block; Individual (type of habitation)
+
+combi$Housing[which(grepl("Block", as.character(combi$Address)) == TRUE)] <- "Block" # type = chr
+combi$Housing[which(grepl("Block", as.character(combi$Address)) == FALSE)] <- "App/House"      
+
+# Create a new factor: Street suffix (AV, BL, CR, CT, DR, HY, LN, PL, PZ, RD, ST, TR, WY)
+
+#unique(combi$Address[grepl("/", as.character(combi$Address)) == FALSE & grepl(" CR", as.character(combi$Address)) == TRUE])
+
+combi$Street[which(grepl(" AV", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "AV" # type = chr
+combi$Street[which(grepl(" BL", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "BL" 
+combi$Street[which(grepl(" CR", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "CR" 
+combi$Street[which(grepl(" CT", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "CT"
+combi$Street[which(grepl(" DR", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "DR" 
+combi$Street[which(grepl(" HY", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "HY"
+combi$Street[which(grepl(" LN", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "LN"  
+combi$Street[which(grepl(" PL", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "PL"  
+combi$Street[which(grepl(" PZ", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "PZ"
+combi$Street[which(grepl(" RD", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "RD" 
+combi$Street[which(grepl(" ST", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "ST"  
+combi$Street[which(grepl(" TR", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "TR" 
+combi$Street[which(grepl(" WY", as.character(combi$Address)) == TRUE & grepl("/", as.character(combi$Address)) == FALSE)] <- "WY"
+combi$Street[grepl("/", as.character(combi$Address)) == TRUE] <- "INTERSECTION"
+
+# Let's create a new category for the crimes
+
+sort(unique(combi$Category))
+
+combi$Type[combi$Category %in% c("FRAUD", "FORGERY/COUNTERFEITING", "BAD CHECKS" , "EXTORTION", "EMBEZZLEMENT", 
+                                             "SUSPICIOUS OCC","BRIBERY")] <- "White Colar Crime"
+
+combi$Type[combi$Category %in% c("VANDALISM", "LARCENY/THEFT", "STOLEN PROPERTY", "ROBBERY", "DRIVING UNDER THE INFLUENCE",
+                                  "DISORDERLY CONDUCT", "LIQUOR LAWS", "VEHICLE THEFT", "ASSAULT", "KIDNAPPING", "TRESPASS", 
+                                  "ARSON", "RECOVERED VEHICLE", "WARRANTS")] <- "Blue Colar Crime"
+
+combi$Type[combi$Category %in% c("MISSING PERSON", "RUNAWAY", "FAMILY OFFENSES", "SEX OFFENSES NON FORCIBLE",
+                                  "PORNOGRAPHY/OBSCENE MAT", "WEAPON LAWS", "DRUNKENNESS", "SUICIDE", "TREA",
+                                  "DRUG/NARCOTIC", "SEX OFFENSES FORCIBLE",  "LOITERING", "GAMBLING", "PROSTITUTION",
+                                  "BURGLARY","SECONDARY CODES")] <- "General Crime"
+
+combi$Type[combi$Category == "OTHER OFFENSES"] <- "Other Crime"
+
+combi$Type[combi$Category == "NON-CRIMINAL"] <- "Non Criminal"
+
+# unique(combi$Category[is.na(combi$Type) == TRUE])
+# unique(combi$Descript[combi$Category == "NON-CRIMINAL"])
+# Not sure for Burglary, Warrant and secondary codes
+
+#white_crime=c("FRAUD", "FORGERY/COUNTERFEITING", "BAD CHECKS" , "EXTORTION", "EMBEZZLEMENT", "SUSPICIOUS OCC",
+#              "BRIBERY")
+
+#blue_crime=c("VANDALISM", "LARCENY/THEFT", "STOLEN PROPERTY", "ROBBERY", "DRIVING UNDER THE INFLUENCE",
+#             "DISORDERLY CONDUCT", "LIQUOR LAWS", "VEHICLE THEFT", "ASSAULT", "KIDNAPPING", "TRESPASS", 
+#            "ARSON", "RECOVERED VEHICLE")
+
+#other_crime=c("MISSING PERSON", "RUNAWAY", "FAMILY OFFENSES", "SEX OFFENSES NON FORCIBLE",
+#              "PORNOGRAPHY/OBSCENE MAT", "WEAPON LAWS", "DRUNKENNESS", "SUICIDE", "TREA",
+#              "DRUG/NARCOTIC", "SEX OFFENSES FORCIBLE",  "LOITERING")
+
+# Back to factor
+
+combi$Dates2 <- factor(combi$Dates2) #Not sure!!
+combi$Year <- as.numeric(combi$Year) #Not sure!!
+combi$Month <- as.numeric(combi$Month) #Not sure!!
+combi$Day <- as.numeric(combi$Day) #Not sure!!
+combi$Week <- as.numeric(combi$MWeek) #Not sure!!
+combi$Hours <- factor(combi$Hours) #Not sure!! (factor?)
+combi$Housing <- factor(combi$Housing)  
+combi$Season <- factor(combi$Season)
+combi$Period <- factor(combi$Period)
+combi$Street <- factor(combi$Street)
+combi$Type <- factor(combi$Type)
+combi$Loc <- factor(combi$Loc) 
+
+# Let's bring them together
+
+attach(combi)
+
+head(combi)
+
+head(combi[,c('Id','Dates','Category', 'Descript', 'DayOfWeek', 'PdDistrict'
+              ,'Resolution','Address', 'X', 'Y', 'Id', 'Hours','Dates2','Period', 'Housing'
+              ,'Season')])
+
+train <- combi[is.na(Id) == TRUE, c('Dates','Category', 'Descript', 'DayOfWeek', 'PdDistrict',
+                                    'Resolution','Address', 'X', 'Y', 'Id', 'Hours','Dates2','Period', 'Housing',
+                                    'Season', 'Year', 'Month', 'Day', 'Week', 'Type', 'Street', 'Loc')]
+test <- combi[is.na(Id) == FALSE, c('Id','Dates','Category', 'DayOfWeek', 'PdDistrict'
+                                    ,'Address', 'X', 'Y', 'Id', 'Hours','Dates2','Period', 'Housing'
+                                    ,'Season','Year', 'Month', 'Day', 'Week', 'Street', 'Loc')]
+
+head(train)
+head(test)
+
+# Use a random Tree 
+
+library(rpart)
+
+fit <- rpart(Category ~ Hours + DayOfWeek + PdDistrict + Loc + Period + 
+               Season + Street + Month + Year + Day , data = train, method = "class"
+             , control = rpart.control(minsplit = 200,cp=0))
+
+# Represent the tree
+
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+
+fancyRpartPlot(fit)
+
+# Submit first prediction
+
+Prediction <- predict(fit, test)
+submit <- data.frame(Id = test$Id, Category = Prediction)
+write.csv(submit, file = "RpartPrediction.csv", row.names = FALSE)
+
+
+   ------------ #Alternative# ---------------
+  
+library(caret)
+library(WriteXLS)
+
+# Caret Tutorial: https://www.youtube.com/watch?v=7Jbb2ItbTC4
+
+    # Partition the train document 
+    inTrain <- createDataPartition(train$Category,p=0.1,list=F)
+    train.sub <- train[inTrain,]  
+    #rm(train)
+    ## create raprt training model
+    rpart.train<-function(train,test){
+      submission<-data.frame(Id=test$Id)
+      response<-data.frame(Cat=train$Category)
+      #extract the names of crime
+      crime<-as.character(unique(train$Category))
+      crime<-sort(crime)
+      for (i in crime){
+        #i = 'ASSAULT'
+        response[i]<- 0
+        response[i][response$Cat==i,]<- 1
+        fit<-rpart(response[,i]~PdDistrict+Loc+DayOfWeek+Day+Year+Hour+Week+Month+Period+Season+Street 
+                 ,data=train, method = "class")
+        pred <- predict(fit,test, type = "response")
+        submission[i]<-pred
+        print(paste0(ncol(submission)/length(crime)*100,'% completed'))
+      }
+      return(submission)
+    }
+  submission<-rpart.train(train.sub,test)
+  rm(train, test,train.sub)
+  write.csv(submission,'submission.csv',row.names=F)
+  gz_out <- gzfile("submit.csv.gz", "w")
+  writeChar(write_csv(submission, ""), gz_out, eos=NULL)
+  close(gz_out)
+  
+  -----------------------------------------------------------------------
+
+# Use a logit regression 
+
+fitlogit <- glm(Category ~ Dates2 + Hours + DayOfWeek + PdDistrict + Address + X + Y + Period + 
+                  Housing + Season, data = train, family = "binomial") # should we use factor(Category)?
+
+pred <- predict(fit,test, type = "response")
+
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
