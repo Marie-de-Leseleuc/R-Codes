@@ -1,0 +1,146 @@
+#Set working directory
+
+setwd("C:\\Users\\mdeleseleuc\\Documents")
+
+# loading data into memory
+
+attrdata <- read.csv(file = "attrition2.csv", head = TRUE, sep = ";")
+
+# Fitting Generalized Linear Model to the data
+fitlogit <- glm(IsChurned ~ Sessions + Days + LastLevel + TotalPlayTimeMin + AvgTimeSessionMin +
+                  TotalItemsUsed + TotalFails + TotalSuccesses + TotalSpentUSD + HCTotalSpent
+                  , data = attrdata, family = "binomial")
+
+# Summerizing results
+summary(fitlogit)
+
+  # Fails and Success not significant for churn at 90 days but remaining variables are, at least at 95% CI
+
+# Analysis of variances
+round(x = anova(fitlogit), digits = 4)
+
+library(aod)
+# Variance - Covariance table/matrix
+round(x = vcov(fitlogit), digits = 4)
+
+library(lattice)
+levelplot(vcov(fitlogit))
+
+# This function will convert the given matrix to a correlation matrix.
+cov2cor(vcov(fitlogit))
+
+# Coefficient of variables in fitted model
+round(x = coef(fitlogit), digits = 4)
+
+# Confidence Intervals using profiled log-likelihood in the test
+round(x = confint(fitlogit), digits = 4)
+
+# Confidence Intervals using standard errors in the test
+round(x = confint.default(fitlogit), digits = 4)
+
+# Calculating odds ratios for the variables
+round(x = exp(coef(fitlogit)), digits = 4)
+
+# We can say that:
+# For one member increase in number of days, the odds of being churned out (attrition or leaving the brand) increases by a factor 0.845 approx.
+# Similarly, 1 visit at the service center, if led to dissatisfaction, would increase attrition by a factor 1.5 approx.
+
+## Calculating odds ratios with 95% confidence interval
+round(x = exp(cbind(OR = coef(fitlogit), confint(fitlogit))), digits = 4)
+
+# Storing predicted probabilities for GLM fits in an additional column "prob" in our dataframe
+prob <- predict(fitlogit, type=c("response"))
+attrdata$prob <- prob
+
+# Plotting probabilities of churning a customer in the dataset
+library(pROC)
+
+g <- roc(IsChurned ~ prob, data = attrdata)
+plot(g)  
+
+Area under the curve: 0.8291 # (which represents that the model is very good, if not excellent!)
+
+# Plotting Area under Curve (AUC)
+library(Deducer)
+## Loading required package: ggplot2
+## Loading required package: JGR
+## Loading required package: rJava
+## Loading required package: JavaGD
+## Loading required package: iplots
+
+modelfit <- glm(formula= IsChurned ~ Sessions + Days + LastLevel + TotalPlayTimeMin + AvgTimeSessionMin +
+                  TotalBoostersUsed + TotalFails + TotalSuccesses + TotalSpentUSD + GemsTotalSpent, 
+                data = attrdata, family=binomial(), na.action=na.omit)
+
+rocplot(modelfit, pred.prob.labels=F, prob.label.digits=3,AUC=TRUE)
+
+# Clearly the graph of ROC curve and the Area Under Curve (AUC) value confirm the "very good predictive model".
+
+# For reference, the following table represents some standards being followed by most researchers and analysts:
+
+# AUC value    Model
+#   0.5        No distinguish ability shown by the prediction model develoved and required further improvements
+#   0.5-0.7    Although can be accepted but overall it is not a very good model
+#   0.7-0.9    very good prediction model (most models fall within this range)
+#   0.9-1.0    Excellent Prediction Model (but are rare)
+
+
+-------------------- Normality Testing --------------------------------------------
+
+## /* Not necessary to test normality for x variables? 
+## Not necessary to test normality for y in case of a binomial distribution! */ 
+
+# Detect Outliers in the Attrdata Data
+library(mvoutlier)
+outliers <-
+  aq.plot(attrdata[c("Sessions"])
+outliers # show list of outliers 
+
+# Influential Observations
+# added variable plots
+
+av.Plots(attrdata)
+# Cook's D plot
+# identify D values > 4/(n-k-1)
+cutoff <- 4/((nrow(mtcars)-length(fit$coefficients)-2))
+plot(fit, which=4, cook.levels=cutoff)
+# Influence Plot
+influencePlot(attrdata, id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+
+
+# Q-Q Plot for variable X (Evaluate Normality)
+attach(attrdata)
+qqnorm(Sessions)
+qqline(Sessions)
+
+hist(Sessions) 
+
+# Try to use log with each variable (then exp() of result)
+
+# Significant departures from the line suggest violations of normality. 
+
+# Test Multivariate Normality
+library(mvnormtest)
+mshapiro.test(as.numeric(attrdata[c("Sessions","Days","LastLevel")])) 
+
+# The null-hypothesis of this test is that the population is normally distributed. 
+# Thus if the p-value is less than the chosen alpha level, then the null hypothesis is rejected and there is evidence that 
+# the data tested are not from a normally distributed population. In other words, the data are not normal. 
+# On the contrary, if the p-value is greater than the chosen alpha level, then the null hypothesis that the data came from a normally distributed population cannot be rejected. 
+
+
+# Graphical Assessment of Multivariate Normality
+x <- as.matrix(attrdata) # n x p numeric matrix
+center <- colMeans(x) # centroid
+n <- nrow(x); p <- ncol(x); cov <- cov(x);
+d <- mahalanobis(x,center,cov) # distances
+qqplot(qchisq(ppoints(n),df=p),d,
+       main="QQ Plot Assessing Multivariate Normality",
+       ylab="Mahalanobis D2")
+abline(a=0,b=1) 
+
+# Homogeneity of Variance 
+# Bartlett Test of Homogeneity of Variances (http://www.instantr.com/2012/12/12/performing-bartletts-test-in-r/)
+bartlett.test(attrdata)
+
+## /* end of normality testin */
