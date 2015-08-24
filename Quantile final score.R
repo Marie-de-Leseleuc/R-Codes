@@ -45,7 +45,7 @@ FinalScoreWQ <- cbind(FinalScoreW25,FinalScoreW50$WQ50,FinalScoreW60$WQ60,FinalS
 
 
 attach(FinalScoreW70)
-FinalScoreW70[which(map == 'M2 - 2.0 - Versalife - Datacore'),]
+FinalScoreW70[which(map == 'Map 1'),]
 
 ## Export to Excel
 
