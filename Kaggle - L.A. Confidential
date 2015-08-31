@@ -250,7 +250,7 @@ library(WriteXLS)
         response[i][response$Cat==i,]<- 1
         fit<-rpart(response[,i]~PdDistrict+Loc+DayOfWeek+Day+Year+Hour+Week+Month+Period+Season+Street 
                  ,data=train, method = "class")
-        pred <- predict(fit,test, type = "response")
+        pred <- predict(fit,test, type = "prob") # shouldn't use "response"! 
         submission[i]<-pred
         print(paste0(ncol(submission)/length(crime)*100,'% completed'))
       }
