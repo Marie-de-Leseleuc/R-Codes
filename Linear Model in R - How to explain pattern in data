@@ -1,0 +1,230 @@
+
+
+setwd("C:\\Users\\mdeleseleuc\\Documents")
+
+data <- read.csv(file = "Data.csv", head = TRUE, sep = ";")
+
+head(data)
+
+# Source & Data
+
+## https://deltadna.com/blog/linear-modeling-in-r-tutorial/?utm_source=deltaDNA+Contacts+List&utm_campaign=dd647c1a69-Newsletter_10272015&utm_medium=email&utm_term=0_6b6af71d29-dd647c1a69-125108493
+## https://deltadna.com/wp-content/uploads/2015/08/Plotting-in-R-tutorial-data-deltaDNA.csv 
+
+# Goal: relashionship between time played and level reached
+
+library(RPostgreSQL)
+
+library(dplyr) 
+
+library(lubridate) 
+
+library(ggplot2) 
+
+
+# We need to calculate the length of time that people have played for. 
+# We are also going to remove people who have played recently. 
+# We are interested in finding the final amount of time people have played for and the final level 
+# that we reach. 
+
+# For this reason we want to exclude people who have played recently 
+# - they might still be playing the game and will get to later levels. 
+# I'm also going to remove players of unknown age and gender. 
+# When we explored the data there seemed to be an unusual pattern with these players, and I don't 
+# trust these observations.
+
+
+# Add in the length of time people have played for
+
+data <-
+  
+  ## Mutate adds new variables and preserves existing; transmute drops existing variables. 
+  
+  mutate(data,
+         
+         date_difference = data$start_date %--% data$last_seen,
+         
+         days_seen = as.period(date_difference) %/% days(1)) %>%
+  
+  select(-date_difference) # We won't need this again, so we can drop it
+
+# ---- Alternative --------
+
+## data["date_difference"] <- difftime(data$start_date,data$last_seen,units = c("days"))
+
+## str(data$date_difference)
+
+# ----- End of Alternative -----
+
+# Clean the data
+
+data <-
+  
+  data %>%
+  
+  filter(last_seen < today() - days(7)) %>% # Only people who haven't played recently
+  
+  filter(gender != 'UNKNOWN') %>%
+  
+  filter(age_group != 'UNKNOWN') 
+
+# /* MAKING A MODEL */
+
+# Let's have a look at the scatter plot of time played vs. level reached.
+
+ggplot(data) +
+  
+  aes(x = date_diff, y = level) +
+  
+  geom_point(aes(colour = factor(age_group))) 
+     # Source: http://docs.ggplot2.org/0.9.3.1/geom_point.html 
+
+# Here are the questions we can answer with modelling:
+  
+  # How fast do players move though the levels on average?
+  # How sure are we about this average speed?
+
+model <- lm(level ~ date_diff, data)
+
+ ## The model estimate that before you play, you will be at level -0.6964 (hmmmm)
+ ## For each day you play, you move up 0.2871 levels i.e. it takes about 4 days to level-up
+
+# How sure are we about the estimate?
+
+summary(model) # can look at the p-value
+
+ ## Number of stars = how sure we are that the coefficient is not 0. Three = "very sure"
+ ## So model is "very sure" that players don't start at level 0 (hmmmmm) and that the rate players move up levels != 0
+
+ ## Can't never be 100% certain, no matter how many stars R gives the coefficient. This is parly because of random chance.
+ ## Might be unlucky and players are actually not moving up levels, on avg, we just manage to pick a strange looking bunch that did.
+ ## Partly because models come with assumptions that can be wrong (I'm pretty sure that players are stating at level 0!)
+
+# /* MEASURE UNCERTAINTY */
+
+ # How sure is the model about its estimate? Need confidence intervals about the parameters 
+
+confint(model)
+
+  ## CI: The avg levels per day might not be exactly 0.2871 but faily sure it's somewhere between 0.
+
+## We can visualize our estimated average movement though levels as well as the uncertainty in this estimate. 
+## The model's best estimate is shown in pink over the data and the most extreme ends of our confidence intervals are shown in grey.
+
+ggplot(data) +
+  
+  aes(x = date_diff, y = level) +
+  
+  geom_point() +
+  
+  geom_abline(intercept = -0.6964,
+              
+              slope = 0.2871,
+              
+              colour = 'deeppink') +
+  
+  geom_abline(intercept = -0.7441751,
+              
+              slope = 0.2862447,
+              
+              colour = 'darkgrey') +
+  
+  geom_abline(intercept = -0.6487243,
+              
+              slope = 0.2878743,
+              
+              colour = 'darkgrey') 
+
+
+# /* Assumptions to check */
+
+
+ ## 1. Linearity
+ ## 2. Normality (of residuals)
+ ## 3. Constant Error Variance (of residuals)
+ ## 4. Independence (of residuals)
+
+ ## residual = noise part of the equation: data = underlying equation + noise i.e. data = model + noise
+ ## residual = data - model
+
+ ## residual = part that the model can't explain
+ ## Ok for it to not explain everything (would be too complex)
+ ## Only need to ensure that residuals are random in the way that the model expect them to be random
+ ## If residuals are not what the model expects, then it will be under or over confident about it's estimates and p-value/CI will be wrong
+
+
+ # Linearity
+
+  ## First and most important assumption is that relashionship between our 2 var. is linear (look at scatter plot).
+  ## If attempt to model a non-linear relationship with a linear model, results may not make much sense.
+
+ # Normality 
+
+  ## The mathematical definition used in linear modeling assumes that this noise component comes from a normal distribution. 
+  ## Since we are assuming the noise comes from a normal distribution then the residuals should come from a normal distribution.
+
+  ## Can extract the residuals from the model running the residuals function on it. Let's do a histogram of the residuals and see
+  ## if they look like a normal distribution.
+
+ggplot(NULL) +
+  
+  aes(x = residuals(model)) +
+  
+  geom_bar()
+
+  ## Not really. So, they sort of look like a normal distribution that got cut off in the middle. 
+  ## How much does this matter? Not hugely. The uncertainty estimates will be off. 
+  ## In particular, the confidence interval suggests that we are equally likely to be underestimating or overestimating the rate of 
+  ## moving up levels. However, this probably isn't true for this data.
+
+ # Constant Residual Variance
+
+  ## We only have one estimate for the uncertainty across the whole range of the data. So, it stands to reason that the noise needs 
+  ## to be equally noisy across all the data or the estimates of uncertainty will be too tight in some places and too loose in other places.  
+  
+  ## Let's try plot the the residuals against the fitted values of the model and see if they are equally noisy everywhere.
+
+ggplot(NULL) +
+  
+  aes(x = fitted(model), y = residuals(model)) +
+  
+  geom_point()
+
+
+  ## Classic case of the residuals being higher for higher values
+  ## Makes sense - at higher levels there will be more variability in what people do.
+  ## Like normality this might not matter too much, just something to keep in mind when describing results.
+  ## In particular, if you want to make predictions about what level a user will be at when they've been playing for a long time, 
+  ## then the model will give unreasonably small uncertainty estimates. (Example of perfect version available in the article)
+
+
+# Independance 
+
+  ## Another way your error estimates can go wrong is if your observations aren't independent i.e. 
+  ## For our data that would mean that if one user got to an unusually high level then the next user would also get to an unusually high 
+  ## level and vice versa for low levels.
+
+  ## However, we should check this anyway. We do this by simply plotting the residuals in the order they appear in the data. 
+
+ggplot(NULL) +
+  
+  aes(y = residuals(model), x = 1:length(residuals(model)) ) +
+  
+  geom_point() +
+  
+  coord_cartesian(x = c(1, 100)) # zoom the plot in to the first 100 pts since hard to see pattern wih all the points
+
+  ## No evidence of non-independance (Example of perfect version available in article)
+
+# Should you use this model?
+
+  ## Yes. It's pretty good. I know I've just pointed out a whole bunch of problems with it, but as models go this one is amazing. 
+  ## If I was asked how fast users are going up levels I would say: on average our users are going up a level every 4 days,
+  ## an I'd be pretty happy with that.
+
+
+
+
+
+
+
