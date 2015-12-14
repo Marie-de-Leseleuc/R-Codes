@@ -21,23 +21,6 @@ FinalScoreW80 <- ddply(Scoredata, "map", summarise, WQ80 = quantile(finalscore, 
 FinalScoreW90 <- ddply(Scoredata, "map", summarise, WQ90 = quantile(finalscore, .90))
 FinalScoreW95 <- ddply(Scoredata, "map", summarise, WQ95 = quantile(finalscore, .95))
 
-  ## Exercice: Try to create a function that calculate each of these quantiles and return a column for each 
-
- Quantile_Function <- function(data,var1,var2) {
-   
-   result <- data.frame()
-   
-   FinalScoreW25 <- ddply(data, var1, summarise, WQ25 = quantile(var2, .25))
-   FinalScoreW50 <- ddply(data, var1, summarise, WQ50 = quantile(var2, .50))
-   FinalScoreW75 <- ddply(data, var1, summarise, WQ75 = quantile(var2, .75))
-   FinalScoreW95 <- ddply(data, var1, summarise, WQ95 = quantile(var2, .95))
-   
-   result <- cbind(FinalScoreW25,FinalScoreW50$WQ50,FinalScoreW75$WQ75,FinalScoreW95$WQ95)
-   
-  }
-
-Quantile_Function(Scoredata,Scoredata$map,Scoredata$finalscore)
-
 ## Bind the result
 
 FinalScoreWQ <- cbind(FinalScoreW25,FinalScoreW50$WQ50,FinalScoreW60$WQ60,FinalScoreW70$WQ70,FinalScoreW75$WQ75,
