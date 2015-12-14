@@ -1,0 +1,360 @@
+
+## Author: Vito Ricci - "Fitting Distributions with R"
+
+
+# 1. Introduction 
+
+# 4 steps:
+ # 1. Model/function choice: hypothesize families of distributions;
+ # 2. Estimate parameters;
+ # 3. Evaluate quality of fit;
+ # 4. Goodness of fit statistical tests.
+
+# Definition:
+ # pdf = probability density function
+
+# 2. Graphics 
+
+x.norm <- rnorm(n=200, m =10, sd=2)
+
+hist(x.norm, main="Histogram of observed data")
+
+ # Histogram can provide insights on skewness, behavior in the tails, presence of multi-modal behavior, and data outliers;
+ # Can be compared to the fundamental shapes associated with standard analytic distributions 
+
+  # Can estimate frequency density using density() and plot() to plot the graphic
+
+plot(density(x.norm), main = "Density estimate of data")
+
+  # Can compute the empirical cumulative distributive function
+
+plot(ecdf(x.norm), main = "Empirical cumulative distribution function")
+
+ # Quantile - Quantile plot is a scatter plot comparing the fitted and empirical distibutions in terms of the dimensional value
+ # of the variable (i.e. empirical quantiles). 
+ # Technique to determine if a data set come from a known population. 
+ # In this plot y-axis = empirical quantiles (quantile = percent of points below the given value) 
+ #              x-axis = theorical model quantiles
+
+ # More info at: http://onlinestatbook.com/2/advanced_graphs/q-q_plots.html 
+
+ # qqnorm(), to test the goodness of fit of a guaussian distribution, or qqplot() for any kind of distribution.
+
+z.norm <- (x.norm-mean(x.norm))/sd(x.norm) # standardized data (z)
+qqnorm(z.norm) ## drawing the QQplot
+abline(0,1) # drawing a 45-degree reference line
+
+ # A 45-degree reference line is also plotted. If the empirical data come from the population with the choosen distribution, the points
+ # should fall approximately along this reference line. The greater the departure from this line, the greater the evidence for the ccl
+ # that the data set have come from a population with a different distribution. 
+
+ # If data differ from a normal distribution (i.e. data belonging from a Weibull pdf) we can use qqplot() in this way:
+
+x.wei <- rweibull(n = 200, shape = 2.1, scale =1.1) # sampling from a Weibull dist. with parameters shape = 2.1 and scale = 1.1
+
+  # Weibull dist: It is a versatile distribution that can take on the characteristics of other types of distributions, 
+  # based on the value of the shape parameter beta.
+
+x.teo <- rweibull(n = 200, shape = 2, scale =1)
+
+qqplot(x.teo, x.wei, main = "QQ-plot dist. Weibull")
+abline(0,1)
+
+ # x.wei = vector of empirical data; x.teo = quantiles from theorical model 
+
+# 3. Model Choice
+
+ # First step in fitting distributions = choosing mathematical model/function to represent data the better way
+
+ # Graphics can help but can be quite subjective so there are methods based on analytical expression ex: Pearson K criterion 
+ # Solving a particulare differential equation, we can obtain several families of function able to represent quite all 
+ # empirical distributions.
+ # Curves depend on: mean, variability, skweness and kurtosis.
+ # Standardizing data depend only on skweness and kurtosis:
+
+   # K = (g1^2)*(g2+6)^2 / 4*(4g2 - 3g1^2 = 12)*(2g2 - 3g1^2)
+  
+   # g1 = SymboleSomme(i =1;n) (xi-m)^3 / n*s^3 = Pearson's skweness coefficient
+  
+   # g2 = SymboleSomme(i =1;n) ( (xi-m)^4 / n*s^4 ) - 3 = Pearson's kurtosis coefficient 
+
+ # Depending on the value of K we have a particular kind of function
+
+ # Exemple of discrete and continuous distributions.
+
+  # Dealing with discrete data we can refer to Poisson's distribution
+
+x.poi <- rpois(n=200, lambda=2.5)
+hist(x.poi,main="Poisson distribution")
+
+  # As concern continuous data we have:
+
+curve(dnorm(x,m=10,sd=2),from =0, to=20, main ="Normal distritubion") #gaussian distribution
+
+curve(dgamma(x, scale = 1.5, shape = 2), from =0, to =15, main = "Gamma distribution") #gamma distribution
+    # The Gamma distribution is widely used in engineering, science, and business, to model continuous variables 
+    # that are always positive and have skewed distributions.
+
+curve(dweibull(x, scale =2.5, shape =1.5), from =0, to = 15, main = "Weibull distribution")
+
+ # To compute the skweness and kurtosis index we can use skewness() and kurtosis() included in fBasics package
+
+library(fBasics)
+skewness(x.norm) ## skewness of a normal distribution
+kurtosis(x.norm) ## kurtosis of a normal distribution
+
+skewness(x.wei) ## skewness of a Weibull distribution
+kurtosis(x.wei) ## kurtosis of a Weibull distribution
+
+# 4. Parameters estimate
+
+ # After choosing a model that can mathematically represents our data, we have to estimate parameters of such a model.
+ # Several estimate methods:
+
+  # 1. Analogic
+  # 2. Moments
+  # 3. Maximum likelihood
+
+ # Analogic
+ 
+  # Estimate model parameters by applying the same function to empirical data 
+  # i.e. estimate unkown mean of a normal population using the sample mean
+
+mean.hat <- mean(x.norm)
+mean.hat
+
+ # Moments
+
+  # Based on matching the sample moments with the corresponding distribution moments.
+  # i.e. sample moments = population (theorical) ones
+  # Advantage: simplicity 
+
+x.gam <- rgamma(200, rate =0.5, shape=3.5) ## sampling from a gamma distribution with |=0.5 (scale parameter) and a=3.5 (shape parameter) 
+
+med.gam <- mean(x.gam) ## sample mean
+var.gam <- var(x.gam)
+l.est <- med.gam/var.gam ## labda estimate (corresponds to rate)
+a.est <- ((med.gam)^2) / var.gam ## alpha estimate
+
+l.est
+a.est
+
+ # Maximum likelihood
+
+  # Use in statistical inference. 
+  # Random variable with a known pdf d(x,q) describing a quantitative character in the population.
+  # Likelihood of a set of data = proba of obtaining that particular set of data given the chose proba model.
+  # Maximum likelihood estimates (MLE) = values of the parameters that maximize the sample likelihood.
+  # Likelihood function:
+
+    # L(x1,x2,...xn, q) = SumSybol f(xi,q)
+
+  # In R can get MLE by two statements:
+   # 1) mle() in package stats4
+   # 2) fitdistc() in package MASS 
+
+  # 1) 
+  # mle = finding q which maximise L() or its logarithmic function.
+  # mle allows to fit parameters using iterative methods to min the negative log-likelihood
+  # in case of gamma distribution: 
+
+
+library(stats4)
+ll <- function(lambda, alpha) { n <-200
+                                x <- x.gam
+                                ## Logarithmic for gamma distribution: 
+                              ( - n*alpha*log(lambda)+n*log(gamma(alpha)) 
+                                - (alpha -1)*sum(log(x))+lambda*sum(x) )
+                              }
+  ## -log-likelihood function
+
+est <- mle(ll, start = list(lambda=2, alpha=1))
+summary(est)
+  
+  # mle() allows to estimate parameters for every kind of pdf, it needs only to know the likelihood analytical expression to be optimised
+ 
+  # 2) 
+  # fitdistr() available for maximum-likelihood fitting of univariate distributions without any information 
+  # about likelihood analytical expression
+
+library(MASS) 
+fitdistr(x.gam, "gamma") ## fitting gamma pdf parameters
+
+fitdistr(x.wei, densfun = dweibull, start = list(scale =1, shape=2))
+
+fitdistr(x.norm, "normal") 
+
+# 5. Measure of goodness of fit 
+
+  # goodness of fit measure useful for matching empirical frequencies with fitted ones by a theoritical model.
+
+lambda.est <- mean(x.poi) ## estimate of parameter lambda
+tab.os <- table(x.poi) ## table with empirical frequencies 
+
+freq.os <- vector()
+for (i in 1:length(tab.os)) freq.os[i] <- tab.os[[i]] ## vector of empirical frequencies
+
+freq.ex <- (dpois(0:max(x.poi), lambda = lambda.est)) ## vector of fitted (expected) frequencies
+
+acc <- mean(abs(freq.os - trunc(freq.ex)) ## absolute goodness of fit index acc
+
+acc/mean(freq.os)*100 ## relative (percent) goodness of fit index
+
+ # A graphical technique to evaluate the goodness of fit can be drawing pdf curve and histogram together 
+
+h <- hist(x.norm, breaks = 15)
+xhist <- c(min(h$breaks), h$breaks)
+yhist <- c(0, h$density,0)
+xfit <- seq(min(x.norm), max(x.norm), length =40)
+yfit <- dnorm(xfit, mean=mean(x.norm), sd=sd(x.norm))
+plot(xhist,yhist,type = "s", ylim = c(0,max(yhist, yfit)),main = "Normal pdf and histogram")
+lines(xfit, yfit, col = "red")
+
+# 6. Goodness of fit tests 
+
+ # Indicates wether or not it is reasonable to assume that a random sample comes from a specific distribution.
+ # Form of hypothesis testing where null and alternative hypothesis are:
+
+  # H0: Sample data come from the stated distribution
+  # H1: Sample data do not come from the stated distribution 
+ 
+ # Sometimes called omnibus test
+ # distribution free i.e. do not depend according the pdf
+
+ # chi-square test = oldest goodness of fit test. May be thought of as a formal comparison of a histogram with the fitted density
+ # can be applied to any univariate dstr for which can calculate the cumulative distribution function
+ # Chi-square goodness of fit is applied to binned data (i.e. put into class)
+  # not a restriction: for non-binned data can simply calculate a hist of freq before generating a chi-square test
+ # However, value of chi-square test statistic is dpdte on how the data is binned
+ # + require a sufficient sample size in order for the Chi-square approximation to be valid
+ # can be applied to discrete or continuous distributions
+ 
+ # c^2 = SymboleSomme(i =1, k) (Oi - Ei)/Ei
+ 
+ # Oi = observed freq fir bin i 
+ # Ei = expected freq fir bin i (calculated by cumulative distribution function)
+ # Ho accepted if C^2 < chi-square percent point function with k-p-1 degree of freedom and a significant level of a.
+
+ # In R, 3 ways to perform a chi-square test
+ # In case of count can use goodfit() in vcd package
+
+library(vcd)
+
+gf <- goodfit(x.poi, type = "poisson", method = "MinChisq")
+summary(gf)
+
+plot(gf, main = "Count data vs Poisson distribution")
+
+ # In case of a coutinuous variable, such as gamma dstr as in the following example, with parameters estimated by sample data:
+
+x.gam.cut <- cut(x.gam, breaks = c(0,3,6,9,12,18)) ## binning data
+table(x.gam.cut) ## binned data table 
+
+## computing expected frequencies (pgamma = distribution function)
+(pgamma(3,shape = a.est,rate = l.est) - pgamma(0,shape = a.est, rate = l.est))*200
+  # 23
+(pgamma(6,shape = a.est,rate = l.est) - pgamma(3,shape = a.est, rate = l.est))*200
+  # 66
+(pgamma(9,shape = a.est,rate = l.est) - pgamma(6,shape = a.est, rate = l.est))*200
+  # 56
+(pgamma(12,shape = a.est,rate = l.est) - pgamma(9,shape = a.est, rate = l.est))*200
+  # 31
+(pgamma(18,shape = a.est,rate = l.est) - pgamma(12,shape = a.est, rate = l.est))*200
+  # 20
+
+f.ex <- c(23,66,56,31,20) ## expected frequencies vector 
+
+f.os <- vector()
+for (i in 1:5) f.os[i] <- table(x.gam.cut)[[i]] # empirical frequencies 
+
+X2 <- sum(((f.os-f.ex)^2)/f.ex) ## Chi-Square statistics 
+
+gdl <- 5-2-1 ## degress of freedom
+
+1-pchisq(X2,gdl) # p-value
+ # 0.64
+
+ # Ho is accepte as the p-value is greater than a significance level fixed at 5% 
+
+ # If dealing with a continuous var. and all its pdf parameters are known we can use
+   chisq.test()
+
+ # Computing relative expected frequencies
+
+p <- c(
+  (pgamma(3,shape = 3.5,rate = 0.5) - pgamma(0,shape = 3.5, rate = 0.5)),
+       (pgamma(6,shape = 3.5,rate = 0.5) - pgamma(3,shape = 3.5, rate = 0.5)),
+       (pgamma(9,shape = 3.5,rate = 0.5) - pgamma(6,shape = 3.5, rate = 0.5)),
+       (pgamma(12,shape = 3.5,rate = 0.5) - pgamma(9,shape = 3.5, rate = 0.5)),
+       (pgamma(18,shape = 3.5,rate = 0.5) - pgamma(12,shape = 3.5, rate = 0.5))
+       )
+
+p <- round(p,1)
+
+chisq.test(x=f.os,p=p) #chi-square test
+ # p-value = 0.189 > 0.05 
+ 
+ # can't reject Null hyp as p-value is rather high i.e. probably sample data belong from a gamma dist with shape parameter= 3.5
+ # and rate parameter = 0.5
+
+
+ # Kolmogorov-Smirnov test is used to decide if a sample comes from a population with a specific distribution.
+ # Can be applied both for discrete (count) data and continuous binned and both for continuous variables
+ # Based on a comparison between tne empirical dist function (ECDF) and the theoretical one.
+ # More powerful than chi-square test when sample size is not too great. 
+ # For large size sample both the tests have the same power.
+ # Drawback: distribution must be fully speficied i.e. location, scale and shape parameters can't be estimated from data sample. 
+ # That's why many analysts prefer to use Anderson-Darling goodness of fit test 
+   # However only available for a few specific distributions.
+
+ # In R can perform Kolmogorov-Smirnov test using ks.test() and apply this test to a sample beloging from a Weibull pdf 
+ # with known parameter (shape =2 ans scale = 1).
+
+ks.test(x.wei, "pweibull", shape =2, scale =1)
+
+ # if p-value > 0.05 => accept Ho i.e. data follow Weibull dist 
+
+x <- seq(0,1,0.1)
+plot(x, pweibull(x, scale = 1, shape =2), type = "l", col = "red", main = "ECDF and Webull CDF")
+plot (ecdf(x.wei), add = TRUE)
+
+# 6.1 Normality tests
+
+ # Shapiro-Wilk test = one of the most powerfull (especially for small samples)
+ # shapiro.test() supplies W statistics and the p-value:
+
+shapiro.test(x.norm)
+ # p-value = 0.687
+
+ # p-value > significance levels usually used to test statistical hyp => accept Ho i.e. sample data belong from a gaussian dist.
+
+ # Jarque-Bera used a lot in economitrics. Based on skewness and kurtosis measures of a dist. 
+
+library(tseries)
+jarque.bera.test(x.norm)
+
+ # A package called nortest allows to perform 5 diffrent normality test:
+
+  # 1. sf.test() performs Shapiro-Francia test:
+
+library(nortest)
+sf.test(x.norm)
+
+  # 2. ad.test() performs Anderson-Darling test:
+
+ad.test(x.norm)
+
+  # 3. cvm.test() performs Cramer-Von Mises test 
+
+cvm.test(x.norm)
+
+  # 4. lillie.test() performs Lilliefors test:
+  # modification of Kolmogorov-Smirnov which can be used when the mean and sd are not known
+
+lillie.test(x.norm)
+
+  # 5. pearson.test() perform person's chi-square test
+  # same C^2 test previously treated used to test the goodness of fit of a normal distribution
+
+pearson.test(x.norm) 
+ 
