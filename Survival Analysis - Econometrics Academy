@@ -1,0 +1,73 @@
+
+
+# Survival analysis in R
+ 
+ # Source: https://www.youtube.com/watch?v=qt2ufTPCWwI 
+ # Data: https://sites.google.com/site/econometricsacademy/econometrics-models/survival-analysis 
+
+# install.package("survival")
+library(survival)
+
+mydata <- read.csv(file = "survival_unemployment.csv", head = TRUE, sep = ",")
+attach(mydata)
+head(mydata)
+
+# Define variables
+time <- spell # spell = Nb period a person was unemployed
+event <- event # event = find a job
+X <- cbind(logwage, ui, age) 
+group <- ui # best if is cardinal variable not a continuous variable
+
+# Descriptive statistics 
+summary(time)
+ # mean = 6.248 i.e. it takes people to find a job or leave the sample
+
+summary(event)
+ # mean = 0.321 i.e. 32% of people have experience the failure event (finding a job)
+
+ # summary for independant variables:
+summary(X) 
+summary(group) 
+
+# Kaplan-Meier non-parametric analysis 
+kmsurvival <- survfit(Surv(time,event)~ 1)
+summary(kmsurvival)
+plot(kmsurvival, xlab = "Time", ylab = "Survival Probability")
+
+# Kaplan-Meier non-parametric analysis by group
+Kmsurvival1 <- survfit(Surv(time,event) ~ group)
+summary(Kmsurvival1)
+plot(Kmsurvival1, xlab = "Time", ylab = "Survival Probality", col = c("blue", "red"))
+# Add a Legend: http://www.sthda.com/french/wiki/ajouter-une-legende-aux-graphiques-avec-le-logiciel-r-comment-prendre-le-controle
+legend(1, 0.3, legend = c("ui = 0", "ui = 1"), col = c("blue", "red"), lty=1:2, cex=0.8,
+       title = "Group", text.font = 2, bg='lightblue')
+
+# NOTE:  Kaplan-Meier = MOST OFTEN USED MODEL
+
+# Nelson - Aalen non-parametric analysis 
+nasurvival <- survfit(coxph(Surv(time, event) ~ 1), type = "aalen")
+summary(nasurvival)
+plot(nasurvival, xlab = "Time", ylab = "Survival probability")
+
+# Cox proportional hazard model - coefficients and hazard rates
+coxph <- coxph(Surv(time,event) ~ X, method = "breslow")
+summary(coxph)
+ # Coef xlogwage = 0.461553 i.e. higher logwages would have lower unemployment duration
+ # coef Xui = -0.979578 i.e. those who have an insurace are likely to have longer unemployment duration
+
+ # hazard rate xlogwage = 1.5865 i.e. 1 unit increasing of logwage is associated with 58% increase in the hazard rate
+ # hazard rate xui = 0.3755 i.e. 0.3755 - 1 = 62% decrease in the hazard rate 
+ # The higher the hazard rate, the more likely the event will occur (i.e. finding a job)
+
+# Exponential, Weibull, and log-logistic parametric model coeficients
+# opposite signs from stata results, weibull results differ; Same as SAS
+exponential <- survreg(Surv(time, event) ~ X, dist = "exponential")
+summary(exponential)
+
+weibull <- survreg(Surv(time, event) ~ X, dist = "weibull")
+summary(weibull)
+
+loglogistic <-  survreg(Surv(time, event) ~ X, dist = "loglogistic")
+summary(loglogistic)
+
+ # NOTE: results are opposite to Cox! Be careful when interpretating the results
