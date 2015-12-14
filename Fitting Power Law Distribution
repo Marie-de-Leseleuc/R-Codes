@@ -1,0 +1,30 @@
+
+
+data <- c(0.35, 0.28, 0.25, 0.21, 0.18, 0.15, 0.13)
+data <- data.frame(data)
+colnames(data) <- "Retention"
+
+data_num <- as.numeric(data[,1])
+
+fd <- fitdistr(data_num, 'pareto', method = "mle")
+summary(fd)
+
+
+ # http://www.inside-r.org/packages/cran/igraph/docs/power.law.fit
+
+library(igraph)
+power.law.fit(data_num,implementation="R.mle")
+
+
+# https://stats.stackexchange.com/questions/27426/how-do-i-fit-a-set-of-data-to-a-pareto-distribution-in-r
+
+pareto.MLE <- function(X)
+{
+  n <- length(X)
+  m <- min(X)
+  a <- n/sum(log(X)-log(m))
+  return( c(m,a) ) 
+}
+
+pareto.MLE(data_num)
+
