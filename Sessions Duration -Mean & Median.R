@@ -25,7 +25,6 @@ mean(EventsPerDay,na.rm = TRUE)
 
 boxplot(EventsPerDay,data=EventsByDay, xlab="Players", ylab="Events") 
 
-# Deus Ex: Human Revolution #
 
 # Read the csv file 
 DaysHeld <- read.csv(file = "DaysHeld.csv", head = TRUE, sep = ";")
