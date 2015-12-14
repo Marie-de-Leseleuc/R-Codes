@@ -1,6 +1,4 @@
 
-# Deus Ex: Breach #
-
 # Read the csv file 
 SessionsDurations <- read.csv(file = "SessionsDurations.csv", head = TRUE, sep = ",")
 
