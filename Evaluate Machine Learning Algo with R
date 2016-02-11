@@ -1,0 +1,211 @@
+# Evaluate machine learning algorithm with R
+
+  source: http://machinelearningmastery.com/evaluate-machine-learning-algorithms-with-r/
+  Data: https://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/pima-indians-diabetes.names 
+  
+# setting path to access my csv file
+setwd("C:\\Users\\mdeleseleuc\\Documents")
+mydata<- read.csv(file="PID.csv",head=TRUE,sep=";")
+head(mydata,5)
+
+  # Note: 
+  # Missing values seem to have been encoded as "0". Need to transform them (for calculations)
+  # Class: 1 = tested positive for diabetes
+  # BMI: 30-35 = Obese class I (18.5-25 = Normal) - Intuition: var. = predictive (source: http://www.calculator.net/bmi-calculator.html)
+  # Question: BMI & blood pressure correlated? 
+  # Data skewed toward negative results (65% of total)
+  # Class should be factor & BMI too (I think)
+  
+# Objective: 
+
+  # This case study is broken down into 3 sections:
+
+   # Defining a test harness.
+   # Building multiple predictive models from the data.
+   # Comparing models and selecting a short list.
+
+# 1. Test Harness
+  
+    # The dataset we use to spot check algorithms should be representative of our problem, but it does not have to be all of our data.
+    # If we have a large dataset, it could cause some of the more computationally intensive algorithms we want to check 
+    # to take a long time to train.
+    # Rule of thumb: each algo should train within 1-to-2 min (ideally 30 sec)
+    # If large dataset: take random samples and 1 simple model (glm) and see how long it takes to train 
+    # Select a sample size that falls within the sweet spot
+    # Can repeat this experiment later with a larger dataset, once have a smaller subset of algo that look promising 
+    # In this ex. only 768 instance so will use everythin
+
+  # load libraries
+  library(mlbench) # A collection of artificial and real-world machine learning benchmark problems
+  library(caret)
+  
+  # load data
+  data(PimaIndiansDiabetes)
+  # rename dataset to keep code below generic
+  dataset <- PimaIndiansDiabetes
+  head(dataset)
+
+  # Test Options
+
+    # Refers to the technique used to evaluate the accuracy of a model on unseen data.
+    # Often referred to as resampling methods in statistics
+    # Recommandation: 
+
+      # Train/Test split: if you have a lot of data and determine you need a lot of data to build accurate models.
+      # Cross Validation: 5 folds or 10 folds provide a commonly used tradeoff of speed of compute time and generalize error estimate.
+      # Repeated Cross Validation: 5- or 10-fold cross validation and 3 or more repeats to give a more robust estimate, 
+      # only if you have a small dataset and can afford the time
+ 
+    # In this case study we will use 10-fold cross validation with 3 repeats.
+
+  control <- trainControl(method="repeatedcv", number=10, repeats=3)
+  seed <- 7 # Allow to can re-set the random number generator before we train each algorithm 
+            # (ensure that each algorithm is evaluated on exactly the same splits of data)
+
+      # Explations about trainControl: https://topepo.github.io/caret/training.html 
+      # The function trainControl generates parameters that further control how models are created 
+
+      # Explantions about cross validation: https://en.wikipedia.org/wiki/Cross-validation_%28statistics%29 
+
+  # Test Metric 
+
+    #  Some good test metrics to use for different problem types include:
+
+      # Classification:
+        
+        # Accuracy: x correct divided by y total instances. Easy to understand and widely used.
+          
+          # Classification accuracy is the number of correct predictions made divided by the total number of predictions made, 
+          # multiplied by 100 to turn it into a percentage.
+
+        # Kappa: easily understood as accuracy that takes the base distribution of classes into account.
+      
+      # Regression:
+        
+        # RMSE: root mean squared error. Again, easy to understand and widely used.
+        # Rsquared: the goodness of fit or coefficient of determination.
+ 
+      # Other popular measures include ROC and LogLoss.
+
+    metric <- "Accuracy"
+
+# 2. Model Building 
+
+    # 3 concerns: 
+    # What models to choose? 
+    # How to configure their arguments?
+    # Preprocessing of the data for the algo 
+
+  # Algos
+
+    # Important to have a good mix of algo representations (lines, trees, instances, etc.) as well as algo for learning those rpstations
+
+    # A good rule of thumb I use is “a few of each”, for example in the case of binary classification:
+      
+      # Linear methods: Linear Discriminant Analysis and Logistic Regression.
+      # Non-Linear methods: Neural Network, SVM, kNN and Naive Bayes
+      # Trees and Rules: CART, J48 and PART
+      # Ensembles of Trees: C5.0, Bagged CART, Random Forest and Stochastic Gradient Boosting
+
+    # Want some low complexity easy to interpret methods (LDA, kNN...) in case they do well and can adopt them
+    # Also want sophisticated methods (random forest...) to see if the pb can be learned and start building up expect. of accuracy
+
+    # At least 10-to-20 different algo  
+
+  # Algos Config
+
+   # All ML algo are parametrized (require specify arguments)
+   # Most algorithm parameters have heuristics that you can use to provide a first past configuration of the algorithm to get the ball rolling.
+   # Spot checking, don't want to be trying many variations of algo parameters (comes later)
+   # caret package helps tuning aglo parameters. Can also estimate good defaults (auto tuning functionality + tunelenght in train())
+   # Recomment using the defaults for most if not all algo when spot checking 
+
+  # Data Preprocessing 
+
+   # The most useful transform is to scale and center the data via. For example:
+
+  preProcess = c("center", "scale")
+
+  # Algo Spot Check  
+
+# Linear Discriminant Analysis
+
+library(e1071)
+library(MASS)
+library(glmnet)
+library(kernlab)
+library(klaR)
+library(rpart)
+library(C50)
+library(plyr)
+library(ipred)
+library(gbm)
+
+  set.seed(seed)
+  fit.lda <- train(diabetes~., data=dataset, method="lda", metric=metric, preProc=c("center", "scale"), trControl=control)
+
+  # Logistic Regression
+  set.seed(seed)
+  fit.glm <- train(diabetes~., data=dataset, method="glm", metric=metric, trControl=control)
+
+  # GLMNET
+  set.seed(seed)
+  fit.glmnet <- train(diabetes~., data=dataset, method="glmnet", metric=metric, preProc=c("center", "scale"), trControl=control)
+  
+  # SVM Radial
+  set.seed(seed)
+  fit.svmRadial <- train(diabetes~., data=dataset, method="svmRadial", metric=metric, preProc=c("center", "scale"), trControl=control, fit=FALSE)
+  
+  # kNN
+  set.seed(seed)
+  fit.knn <- train(diabetes~., data=dataset, method="knn", metric=metric, preProc=c("center", "scale"), trControl=control)
+
+  # Naive Bayes
+  set.seed(seed)
+  fit.nb <- train(diabetes~., data=dataset, method="nb", metric=metric, trControl=control)
+
+  # CART
+  set.seed(seed)
+  fit.cart <- train(diabetes~., data=dataset, method="rpart", metric=metric, trControl=control)
+
+  # C5.0
+  set.seed(seed)
+  fit.c50 <- train(diabetes~., data=dataset, method="C5.0", metric=metric, trControl=control)
+
+  # Bagged CART
+  set.seed(seed)
+  fit.treebag <- train(diabetes~., data=dataset, method="treebag", metric=metric, trControl=control)
+
+  # Random Forest
+  set.seed(seed)
+  fit.rf <- train(diabetes~., data=dataset, method="rf", metric=metric, trControl=control)
+
+  # Stochastic Gradient Boosting (Generalized Boosted Modeling)
+  set.seed(seed)
+  fit.gbm <- train(diabetes~., data=dataset, method="gbm", metric=metric, trControl=control, verbose=FALSE)
+
+# 3. Model Selection
+
+  # Looking for a best model at this stage. Algos not been tuned and can all likely do a lot better than the results currently seen.
+  # Goal: 
+
+results <- resamples(list(lda=fit.lda, logistic=fit.glm, glmnet=fit.glmnet,
+                          svm=fit.svmRadial, knn=fit.knn, nb=fit.nb, cart=fit.cart, c50=fit.c50,
+                          bagging=fit.treebag, rf=fit.rf, gbm=fit.gbm))
+  # Table comparison
+  summary(results)
+
+    # The highest the mean, the best the accuracy 
+
+    # Also useful to review the results using a few different visualization techniques 
+    # to get an idea of the mean and spread of accuracies.
+  
+  # boxplot comparison
+  bwplot(results)
+  # Dot-plot comparison
+  dotplot(results)
+
+    # From these results, it looks like linear methods do well on this problem. 
+    # I would probably investigate logistic, lda, glmnet, and gbm further.
+    # If had more data, would repeat the experiment with a large sample and see if large dataset improve perf. 
+    # of any of the tree methods (often does)
