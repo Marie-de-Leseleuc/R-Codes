@@ -1,0 +1,647 @@
+
+# ----------------------------------------------------------- PART 1 ------------------------------------------------------------------
+
+# Source: https://www.youtube.com/watch?v=32o0DnuRjfg 
+
+# Load raw data
+train <- read.csv("train Titanic.csv", header = TRUE, sep = ";")
+test <- read.csv("test Titanic.csv", header = TRUE, sep = ";")
+
+head(train)
+
+# Add a "Survived" variable to test set to allow for combining data sets
+test.survived <- data.frame(Survived = rep("None", nrow(test)), test[,])
+
+# Combine data sets
+data.combined <- rbind(train, test.survived)
+
+# A bit about R data types (e.g., factors)
+str(data.combined)
+
+data.combined$Survived <- as.factor(data.combined$Survived)
+data.combined$Pclass <- as.factor(data.combined$Pclass)
+ 
+ # Factor = Categorical variable = var./data type that can only takes a limited set of discrete values (similar to drop downs)
+ # pclass is a factor and not an int because it represents the class of the passenger (proxy) 
+
+# Take a look at gross survival rate
+table(data.combined$Survived)
+
+# Distribution accross classes 
+table(data.combined$Pclass)
+ # More people lower class than upper class
+ # Would expect more people in second class than in first but not the case (could be interesting from analysis perspective)
+ # for creating machine learning algo there is some rules/patterns to understand based on the data  
+
+
+# For human beings visualisations are easier to grasp so let's look at some graphs: 
+# Load up ggplot2 package to use for visualizations 
+library(ggplot2)
+
+# Hypothesis - Rich folks survived at a higher rate (upper class cabins closer to the life boats)
+train$Pclass <- as.factor(train$Pclass) # only know if you survived in the train set 
+ggplot(train, aes(x = Pclass, fill = factor(Survived))) + geom_histogram(width = 0.5) + # aes = aesthetic; fill = fill color (optional)
+  xlab("Pclass") +
+  ylab("Total Count") +
+  labs(fill = "Survived") # label for the fill 
+
+ # Hypothesis seems to be confirmed 
+
+# Examine the first few names in the training data set (general sense of the data)
+head(as.character(train$Name)) # on the fly, don't consider the names as factor and just give me the first few
+
+# How many unique names are there across both train & test?
+length(unique(as.character(data.combined$Name)))
+
+
+# Obtain 1037 while factor dimension is 1309 ie. two possibly duplicated names
+# First, get the duplicate names and store them as vector
+dup.names <- as.character(data.combined[which(duplicated(as.character(data.combined$Name))), "Name"])
+  # Take duplicates and convert them to character
+  # Which = "where" clause in SQL 
+  
+# Next, take a look at the records in the combined data set
+data.combined[which(data.combined$Name %in% dup.names),]
+ # Appears like it's all good as it is only 2 people having the same name (i.e no anomaly) 
+
+  # Personal Note: looks like some Embarked information is missing 
+  # data.combined[which(as.character(data.combined$Embarked) == "" ),]
+
+# What is up with the "Miss." and "Mr." thing?
+library(stringr)
+
+# Any correlation with other variables (e.g., sibsp)?
+# Do the titles have any predictive power? 
+
+misses <- data.combined[which(str_detect(data.combined$Name, "Miss.")),]
+misses[1:5,] # equivalent to head(misses,5) 
+
+ # Personal note: how many were 1st class vs. other classes? 
+ # table(misses$Pclass)  
+ # Question: different from remaining population or expected distribution?
+ # t.test(as.numeric(data.combined$Pclass), as.numeric(misses$Pclass))
+ # p-value > 0.05 i.e can't reject H0 i.e. the mean are the same (come from the same population)
+  
+  # Personal note: let's extract the titles from the Name column 
+  # TempName <- str_extract(as.character(data.combined$Name), '\\b[^,]+$')
+  # str(TempName)
+  # http://stackoverflow.com/questions/14790253/character-extraction-from-string 
+  # data.combined$Title <- sapply(strsplit(TempName, "\\."), `[[`, 1) 
+  # table(data.combined$Title)
+
+ # Correlations?: 
+   # out of the 5 records, 4 survived (80%)
+   # out of the 5 records, 4 were third class (interesting knowing that third class were seen surviving less, earlier)
+   # out of the 5 records, 4 had no sibling/spouse (the remaining was 4)
+   # out of the 5 records, 4 had no parents (the 4-year-old girl was travelling with a sibling and a parent) 
+   # Seems to infer that "Miss" is a non-maried women, generally speaking (maybe some predictive power?)
+   # Also tend to be younger in age which makes sense knowing that at this time most women were married past a certain age
+
+# Hypothesis - Name titles correlate with age
+mrses <- data.combined[which(str_detect(data.combined$Name, "Mrs.")),]
+head(mrses, 5)
+
+  # Same general pattern: Husbands name first and then their maid name (entre parathèses)
+  # In general older females; most travel with spouse; high survival % 
+
+# Check out males to see if pattern continues 
+males <- data.combined[which(train$Sex == "male"),]
+males[1:5,]
+
+ # one "Master" age of 2 i.e. possible that this title is related to being a boy of young age
+
+# Expand upon the relationship between "Survived" and "Pclass" by adding the new "Title" variable to the data set 
+# and then explore a potential 3-dimensional relationship
+
+# Create a utility function to help with title extration 
+extractTitle <- function(Name) {
+  Name <- as.character(Name)
+  
+  if(length(grep("Miss.", Name)) > 0) {  # ?grep if recognize "Miss." within the name then return "Miss."
+    return("Miss.")
+  } else if (length(grep("Master.", Name)) > 0) {
+    return("Master.")
+  } else if (length(grep("Mrs.", Name)) > 0) {
+    return("Mrs.")
+  } else if (length(grep("Mr.", Name)) > 0) {
+    return("Mr.")
+  } else {
+    return("Other")
+  }    
+}
+
+
+Titles <- NULL
+for (i in 1:nrow(data.combined)) {
+  Titles <- c(Titles, extractTitle(data.combined[i, "Name"]))
+}
+data.combined$Title <- as.factor(Titles)
+
+# Since we only have a survived lables for the train set, only use the first 891
+ggplot(data.combined[1:891,], aes(x = Title, fill = Survived)) + # want aesthitic where the x-axis is the title & color code base on survival
+  geom_bar(binwidth = 0.5) +
+  facet_wrap(~ Pclass) + # pivot data base on passenger class 
+  ggtitle("Pclass") +
+  xlab("Title") +
+  ylab("Total Count") +
+  labs(fill = "Survived")
+
+ # If you are a Mister. in third class, life is not so good for you 
+ # If you are a Mrs. in thir class you are about 50/50
+ # "Women and children first"
+ # Title gives indication on both sex and age (acts as proxy) - Correlation between those variables
+
+
+# ----------------------------------------------------------- PART 2 ------------------------------------------------------------------
+
+
+# source: https://www.youtube.com/watch?v=u6sahb7Hmog
+
+ # Algo are great, but nothing beats knowing your data i.e. do the data analysis upfront
+ # Data analysis will save you a lot of time (training a model takes a lot of time)
+ # Eventually, your data will speak to you: 
+   # What's likely predictive and what's not
+   # Brainstorming new scenarios (i.e., feature engineering)
+
+# What's the distribution of females to males across train & test?
+table(data.combined$Sex)
+
+  # 2 to 1 ratio of males to female and males were far more likely to perish than female 
+  # Ususally models tends to optimaze themselves from the data they are presented
+  # Thus not out of the realm of possibilities to build a model that basically says:  
+  # "if you are male, you perish and if you are female, you don't"
+  # Doesn't work for accuracy 
+
+# Visualize the 3-way relashionship of sex, pclass and survival, compare to analysis of title
+ggplot(data.combined[1:891,], aes(x = Sex, fill = Survived)) + # want aesthitic where the x-axis is the sex & color code base on survival
+  geom_bar(binwidth = 0.5) +
+  facet_wrap(~ Pclass) + # pivot data base on passenger class 
+  ggtitle("Pclass") +
+  xlab("Sex") +
+  ylab("Total Count") +
+  labs(fill = "Survived")
+
+  # Strangely survival rate for second class is not largely better than third class which is interesting
+  # Nothing here invalidates previous plot. In fact, confirms that are on right track with titles
+
+# Ok, age and sex seem pretty important as derived from analysis of title, 
+# let's take a look at the dist. of age over the entire data set.
+summary(data.combined$Age)
+
+  # 263/1309 NAs i.e. missing values
+  # Multiple ways of handling missing values:
+    # 1. Collect them (scientific world) but cost prohibitive or hardly feasible
+    # 2. Infer a value (ex: replace a NA by the medium or mean for category considered)
+    # 3. Imputation i.e. create a predictive model on data to predict what the value should be (ex: linear regression model)
+     # use rest of values as input
+    # 4. Find a proxy that mimics the value so that you don't need to worry about it
+     # Correlation between title and age
+
+summary(data.combined[1:891,"Age"]) # first 891 rows only
+
+  # Not only do we have missing values but half of them are in the training data (bad) 177/263 = 67%
+  # Reitarate the need to find some var. to act as a proxy and not infering or imputing values 
+  # (lot of missing values i.e. issue with accuracy of the model)
+
+# Just to be thorough, take a look at survival rates broken out by sex, pclass and age
+ggplot(data.combined[1:891,], aes(x = Age, fill = Survived)) + # want aesthitic where the x-axis is the age & color code base on survival
+  facet_wrap(~ Sex + Pclass) + # pivot data base on passenger class and sex
+  geom_histogram(binwidth = 10) +
+  ggtitle("Pclass") +
+  xlab("Age") +
+  ylab("Total Count") 
+
+  # Females and 1st class = very good survival rate
+  # Female and 2nd class = if young (<25 y.o.) then good chance to survive
+  # Female and 3rd class = approx. 50/50
+  # Male and 3rd class = the older you get, the worst your survival rate 
+  # Male and 2nd class = younger you are, the more you survive (correspond to master)
+  # Male and 1st class = odds decline quickly for males even in first class
+
+  # More potential evidence toward "women and children first"
+
+# Validate that "Master" is a good proxy for male children
+boys <- data.combined[which(data.combined$Title == "Master."),] # give whichever is true; equivalent to "where" in SQL
+summary(boys$Age)
+
+  # Reasonable proxy: max = 14.5 y.o.l min = 0.33 & only 8 missing values (/263 NAs)
+  # Reflexively, mister is a good proxy for adult males so don't need to worry about the age variable for males in this dataset
+
+# We know that "Miss." is more complicated, let's examin further
+misses <- data.combined[which(data.combined$Title == "Miss."),]
+summary(misses$Age)
+head(misses,5)
+
+ # 50(/263) missing values 
+ # Min = 0.17; Max = 63 
+ # Mean < Median = right skewed i.e. most Misses are actualy adult (i.e. not necessarely female children)
+
+ggplot(misses[misses$Survived != "None",], aes(x = Age, fill = Survived)) + 
+  facet_wrap(~Pclass) + 
+  geom_histogram(binwidth = 5) +
+  ggtitle("Age for Miss. by Pclass") +
+  xlab("Age") +
+  ylab("Total Count") 
+
+  # In general if title miss and in 1st class, very good chance of survival
+  # 2nd & 3rd class more mixted but for 3rd class, the older the miss, the least chance of survival   
+  # Want to know if adult or child since, especially in 3rd class, there seems to have some predictive power
+
+# Ok, appears female children may have different survival rate,
+# could be a candidate for feature engineering later  
+misses.alone <- misses[which(misses$SibSp == 0 & misses$Parch == 0),]
+summary(misses.alone)
+length(which(misses.alone$Age <= 14.5)) # 14.5 because max(Age) for boys
+  
+  # If misses travel alone, usually they are adult
+  # Will use rules of thumb: if you are the title miss and you travel alone, good chance you are adult (only 4/150 are child)
+
+# Move on to the sibsp variable, summarize the variable
+summary(data.combined$SibSp)
+  
+  # No NAs 
+  # Mean only 0.4989 (higly skewed toward 0)
+  # Median = 0 i.e. 50% travel alone
+ 
+# Can we treat as a factor?
+length(unique(data.combined$SibSp))
+
+  # Accross the dataset, there is only 7 unique values so can turn it into a factor (reasonable)
+
+data.combined$SibSp <- as.factor(data.combined$SibSp)
+
+# We believe title is predictive, visualize surival rates by SibSp, Pclas and Title
+ggplot(data.combined[1:891,], aes(x = SibSp, fill = Survived)) + # want aesthitic where the x-axis is the age & color code base on survival
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("SibSp") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+
+  # Pretty definitive pattern: 
+   # Master & Miss 1st class = good to go
+   # No big pattern for Mr. in 1st class 
+   # Mrs survived in 1st class
+   # Mr. 2nd & 3rd class: not good (but more chance of survival if less siblings)
+   # Master in 3rd: better chance of survival if traveling with smaller contingent of siblings
+   # Miss in 3rd class: if you are a child, you have more chance to survive if you have less siblings
+   
+# Treat the Parch variable as a factor and visualize
+data.combined$Parch <- as.factor(data.combined$Parch)
+ggplot(data.combined[1:891,], aes(x = Parch, fill = Survived)) + # want aesthitic where the x-axis is the age & color code base on survival
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("Parch") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+
+  # Adult male 1st: higher chance of survival if were travelling without a parent or a child
+  # Mrs.3rd class: the more children, the least chance of survival 
+
+# Let's try some feature engineering. What about creating a family size feature?
+temp.SibSp <- c(train$SibSp, test$SibSp)
+temp.Parch <- c(train$Parch, test$Parch)
+data.combined$Family.size <- as.factor(temp.SibSp + temp.Parch + 1)
+
+# Visualize it to see if it is predictive
+ggplot(data.combined[1:891,], aes(x = Family.size, fill = Survived)) + # want aesthitic where the x-axis is the age & color code base on survival
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("Family.size") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+
+  # Stair stepping: survival lower as family bigger
+  # Maybe some predictive power 
+
+# ----------------------------------------------------------- PART 3 ------------------------------------------------------------------
+
+
+# source: https://www.youtube.com/watch?v=aMV_6LmCs4Q 
+
+# Take a look at the ticket variable
+str(data.combined$Ticket) # structure of the data
+
+# Based on the huge number of levels ticket really isn't a factor variable. It is a string.
+# Convert i and display first 20
+data.combined$Ticket <- as.character(data.combined$Ticket)
+data.combined$Ticket[1:20]
+
+
+# There's no immediatly apparent structure in the data, let's see if we can find some.
+# We'll start with taking a look at just the first char for each
+Ticket.first.char <- ifelse(data.combined$Ticket == "", " ", substr(data.combined$Ticket,1,1)) 
+unique(Ticket.first.char)
+
+
+# Ok we can make a factor for analysis purposes and visualize 
+data.combined$Ticket.first.char <- as.factor(Ticket.first.char)
+
+# First, a high-level plot of the data
+ggplot(data.combined[1:891,], aes(x = Ticket.first.char, fill = Survived)) + 
+  geom_bar() +
+  ggtitle("Survivability by Ticket.first.char") +
+  xlab("Ticket.first.char") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+
+  # On the surface, this is some signal that maybe there is some structure in that data that helps me decide if someone survived or not
+  # Not always intuitive. Oftentime can find something that doesn't match intuition but is suprisingly effective
+
+# Tickets seems like it might be predictive, drill down  a bit (spectical)
+ggplot(data.combined[1:891,], aes(x = Ticket.first.char, fill = Survived)) + 
+  geom_bar() +
+  facet_wrap(~ Pclass) +
+  ggtitle("PClass") +
+  xlab("Ticket.first.char") +
+  ylab("Total Count") +
+ # ylim(0,150) +
+  labs(fill = "Survived")
+
+  # Tells a more interesting story: most folks in first class had tickets of type 1 & disproportionnaly seem to survive
+  # Most second class had a ticket of type 2; Maybe there is a pattern there?
+  # But pattern broken in third class + don't learn anything new. Already knew that people in third class died more often
+  # Most of the tickets will be turquoise in first class anyaway 
+
+# Lastly, see if we get a pattern when using comination of pclass & title
+ggplot(data.combined[1:891,], aes(x = Ticket.first.char, fill = Survived)) + 
+  geom_bar() +
+  facet_wrap(~ Pclass + Title) + # most predictive variables that we have seen so far is combi of Pclass & Title
+  ggtitle("PClass & Title") +
+  xlab("Ticket.first.char") +
+  ylab("Total Count") +
+  ylim(0,200) +
+  labs(fill = "Survived")
+
+  # Ticket not a predictive variable; Not much structure. Wouldn't use it in model (at least not at the beginning)
+  # Ockham razor: all things being equal, tends to prefer simple models to complex ones 
+    # True for nature of algo: 
+     # ex: logit vs deep learning network for classification 
+      # If both have the same accuracy then would tend to prefer logit because will generalize better
+      # Simpler models tends to perform better on unseen data in the futur than more complicated models (in general)
+      # Same principal with data: if can get same level of performance with smaller dataset 
+
+
+# Next up - The fare Titanic passenger paid
+summary(data.combined$Fare)
+str(data.combined$Fare)
+
+  # 25% of the tickets were 7.896 Pound or less (first quartile)
+  # Mean is double the median so distribution is expected to be skewed toward the high end (evidence: Max value > 500)
+
+length(unique(data.combined$Fare))
+  # Sometimes if have a numeric variable, if there is a small number of unique values in dataset you could potentially transform that
+  # into a factor (may be useful for survey analysis or if trying to bin the x-axis)
+  # In this case, way too many values 
+
+# Can't make fare a factor, treat as a numeric & visualize with histogram 
+ggplot(data.combined[1:891,], aes(x = Fare)) + 
+  geom_histogram(binwidth =5) +
+  ggtitle("Combined Fare Distribution") +
+  xlab("Fare") +
+  ylab("Total Count") +
+  ylim(0,200) 
+
+  # One outlier way above (around 500 pouds)
+  # Large portion of folks on Titanic correspond to first class
+    # First class tickets would cost much more than third class
+
+# let's check to see if fare has predictive power
+ggplot(data.combined[1:891,], aes(x = Fare, fill = Survived)) + 
+  geom_histogram(binwidth =5) +
+  facet_wrap(~ Pclass + Title) + # most predictive variables that we have seen so far is combi of Pclass & Title
+  ggtitle("PClass, Title") +
+  xlab("Fare") +
+  ylab("Total Count") +
+  ylim(0,200) +
+  labs(fill = "Survived")
+
+  # Risk of overfitting (perfect for training but don't generalize)
+
+# Analysis of the cabin variable
+str(data.combined$Cabin)
+
+  # Expected to look a lot like Class: Nomenclature that indicates what deck i.e. what class you are in
+
+# Cabin isn't really a factor, make a string and then display first 100
+data.combined$Cabin <- as.character(data.combined$Cabin)
+data.combined$Cabin[1:100]
+
+   # the de facto random forrest algo in R can't handle factors > 30 levels 
+   # Letter probably correspond to the deck (potentially predictive: the higher the deck, the richer and the closer to the life boats)
+   # Could the empty space correspond to people in third class?
+   # Most indicative information should be the letter. The cabin number would be prone to overfitting.
+
+# Replace empty cabins with a "U"
+data.combined[which(data.combined$Cabin == ""), "Cabin"] <- "U"  
+
+# Take a look at just the first char as a factor
+Cabin.first.char <- as.factor(substr(data.combined$Cabin, 1,1))
+str(Cabin.first.char)
+levels(Cabin.first.char)
+
+# Add to combined data set and plot
+data.combined$Cabin.first.char <- Cabin.first.char
+
+# High level plot
+ggplot(data.combined[1:891,], aes(x = Cabin.first.char, fill = Survived)) +
+  geom_bar() +
+  ggtitle("Survivability by Cabin.first.char") +
+  xlab("Cabin.first.char") +
+  ylab("Total Count") +
+  ylim(0,750) +
+  labs(fill = "Survived")
+
+  # Nothing jumps out. Already knows that the letters correspond to the class (i.e. nothing new).
+  # Ex: less people in A (first class?)
+  
+# Could have some predictive power, drill it
+ggplot(data.combined[1:891,], aes(x = Cabin.first.char, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass) +
+  ggtitle("Survivability by Cabin.first.char") +
+  xlab("Cabin.first.char") +
+  ylab("Total Count") +
+  ylim(0,500) +
+  labs(fill = "Survived")
+
+  # Few people, relatively speakin, in first class
+  # Big shift: majority of people with no tickets are in second and third class 
+  # strong correspondance between the cabin, the deck and the class: cabin is not going to be very useful 
+    # Personal Note: head(data.combined[which(data.combined$Cabin == "U"),],10)
+
+# Does this feature improve upon Pclass + Title?
+ggplot(data.combined[1:891,], aes(x = Cabin.first.char, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("Cabin.first.char") +
+  ylab("Total Count") +
+  ylim(0,500) +
+  labs(fill = "Survived")
+
+  # No real trend/signal
+
+# What about folks with multiple cabins? (Note: more room = richier?)
+data.combined$Cabin.multiple <- as.factor(ifelse(str_detect(data.combined$Cabin, " "), "Y", "N"))
+ # A space separates the multiple cabin numbers (and previously replaced NAs with "U") 
+
+ggplot(data.combined[1:891,], aes(x = Cabin.multiple, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("Cabin.multiple") +
+  ylab("Total Count") +
+  ylim(0,500) +
+  labs(fill = "Survived")
+
+  # Nothing new
+
+# Does survivability depend on where you got onboard the Titanic? 
+str(data.combined$Embarked)
+levels(data.combined$Embarked)
+
+  # Intuitively: people of a certain socio-economic situation could have disporpotionatly embarked in a specific location
+  # But cpuld be tenuous   
+
+# Plot data for analysis
+ggplot(data.combined[1:891,], aes(x = Embarked, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("Embarked") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+
+  # Not seeing anything that jumps out at us
+  # Confirm intuition that location doesn't have a particular impact 
+  # Most powerful ccl that can be made is that if you embarked at Queensland, you were disporportionately in 3rd class
+
+# ----------------------------------------------------------- PART 4 ------------------------------------------------------------------
+
+
+ # Source: https://www.youtube.com/watch?v=UHJH7w9q4Lc&list=PLTJTBoU5HOCRrTs3cJK-PbHM39cwCU0PF&index=4
+
+# Many machine learning algo can rate the "importance" of training variables/features either explicitely or implicitely ("feature selection")
+ # Scenario 1: lots of features -> exploratory modelling assist in identifying "high value" candidate features
+ # Scenario 2: data analysis done -> expl. mod. can provide additional insight/confirmation
+ # Scenario 3: feature engineering done -> can gain insight into efficacity of these features 
+# Expl. mod. should be simple (no extensive hyperparameter tuning), fast (train as fast as possible) and effective (powerful enough)
+ # the more regression we can execute in a time, the more value we can generate
+
+
+# Random forests:
+  # King of expl. models 
+  # Meet all the intuitive criteria above: 
+   # Feature selection: byproduct of the algo (i.e. tree trainig will avoid features without predictive power)
+   # Simple: can handle numeric, categorical, and correlated var. without preprocessing
+   # Fast: excellent compromise between speed of training and other benefits 
+   # Effective: one of the most powerfulm general-purpose algo available. 
+  # Great resources for learning Random Forests on YouTube
+    
+   # Random forrest tutorial from Kaggle: https://www.youtube.com/watch?v=kwt6XEh7U3g&list=PL6XpIcmAkEKLqAapoA1_sXZ7wQTBLdQQ2 (40:00)
+
+library(randomForest)
+
+# Train a Random Forest wih the default parameters using Pclass & Title
+rf.train.1 <- data.combined[1:891, c("Pclass", "Title")] # let's explore with Pclass and Title
+rf.label <- as.factor(train$Survived) 
+
+set.seed(1234) # Random Forest are random so if want reproducibility setting the seed is important else will receive slightly different
+               # results each time (by design) 
+rf.1 <- randomForest(x = rf.train.1, y = rf.label, importance = TRUE, ntree = 1000) # function that trains an instance of rf for us
+  # Importance = as train all the decision trees, keep track of the importance of the features and variables
+  # ntree = how many individual trees are in the forest (default = 500 which is reasonnable)  
+rf.1
+  # Nb of var tried.. = hyperparameter? 
+
+  # OOB = "out of bag". Rf takes a random set of columns and rows out of spreadsheet and does that iterativaly (each time draw a tree)
+  # Possible that select the same colum and the same row more than once (since replacement) i.e. some will never get selected
+  # Possible to use those unselected rows and columns to test how accurate the rf (that use the remaining data) is.
+  # It is what the model does by provind the % of error rate (very useful feature for data exploration but not enough to test the model)
+  # we get nearly (100-20.76)% accuracy with only too variable which is very good 
+  # 2 var. together are very predictive of wether you survived or died (confirm intuition)
+  
+  # http://stats.stackexchange.com/questions/30691/how-to-interpret-oob-and-confusion-matrix-for-random-forest 
+
+  # Confusion matrix: broken down by our labels what were the results of this rf? (row = predictive var.)
+  # Model predicted correctly that 538 records perished when in fact they did perish  
+  # also predicted that 11 people perished when in fact they survived (error rate of 0.02003643*100 = 2% in perish prediction - v.good)
+table(train$Survived)
+  # However, the data is skewed, most people people perished so that's not a surprising result. This model is pretty good at pessimist results 
+  # How good are we at predicting if somebody survived? 
+  # Predicted that 174 survived when they in fact perished and that 168 survived when did survive (error rate of 51% not very good!)
+
+varImpPlot(Rf.1)
+
+  # Not super interesting because only two variables but if multiple variables what you can see is how important the variable is 
+  # The further (right), the better.
+  # As we can see here, and as expected from data analysis, title is actually more important than pclass to determiner wether you 
+  # survived in this model (more predictive).
+
+# As we did our analysis we were able to throw out a bunch of variables as not being particularly predictive (cabin, embarked, age...)
+# But what we identified as potentially predictive is the sibsp and parch variables 
+
+# Train Random Forest using pclass, title & sibsp
+rf.train.2 <- data.combined[1:891, c("Pclass", "Title", "SibSp")]
+
+set.seed(1234)
+rf.2 <- randomForest(x = rf.train.2, y = rf.label, importance = TRUE, ntree = 1000)
+rf.2
+varImpPlot(rf.2)
+
+  # When add a third variable get OOB of 19.75% (1% increase in accuracy). 
+  # Seems minimal but is actually huge in machine learning application
+  # Confirms intuition that sibsp is predictive 
+  # Dramaticly increase accuracy for those of survived (error:33% vs. 50%) 
+  # But had a negative impact on accuracy for non-survival (but in far less proportion than the increase of accuracy for other result)
+  # So it's ok (but bold) in this context (Kaggle) where accuracy of the model is .  
+
+# Train Random Forest using pclass, title & parch
+rf.train.3 <- data.combined[1:891, c("Pclass", "Title", "Parch")]
+
+set.seed(1234)
+rf.3 <- randomForest(x = rf.train.3, y = rf.label, importance = TRUE, ntree = 1000)
+rf.3
+varImpPlot(rf.3)
+
+  # Both Parch and Sibsp have predictive power but one is better than the other (sibsp > parch) as illustrated by OOB error rates.
+  # Why not use them both?
+
+# Train Random Forest using pclass, title, sibsp & parch
+rf.train.4 <- data.combined[1:891, c("Pclass", "Title", "SibSp", "Parch")]
+
+set.seed(1234) #setting seed allows to make sure that any difference comes from the variable we put in
+rf.4 <- randomForest(x = rf.train.4, y = rf.label, importance = TRUE, ntree = 1000)
+rf.4
+varImpPlot(rf.4)
+
+  # Combination of Sibsp & Parch improve the model again (18.52% i.e. minus 2 point of %)
+  # Telling us that the number of siblings/spouses/Childrens and parents probably matters 
+  # "women & children first" holds out
+  # "Richest survived most" holds out 
+  # More children in second and third class most probably meant less chance of making it to the top
+
+  # Let's use the family variable we created
+
+# Train Random Forest using pclass, title & family.size (combine Parch & SibSp)
+rf.train.5 <- data.combined[1:891, c("Pclass", "Title", "Family.size")]
+
+set.seed(1234)
+rf.5 <- randomForest(x = rf.train.5, y = rf.label, importance = TRUE, ntree = 1000)
+rf.5
+varImpPlot(rf.5)
+
+  # Algo can't understand the concept of family size by itself simply by looking at Parch & Sibsp (will look into them separatly)
+  # Interesting result, total error rate is now 18.41% which is a small improvement but still relevant
+  # Validate intuition that family size matters and algo not efficient at combining Parch & Sibsp. It works better. Not by a lot but still
+
+100 - 18.41 # Estimate of accuracy around 81.59% with just 3 features (cool)
