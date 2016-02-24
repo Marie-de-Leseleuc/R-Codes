@@ -1,6 +1,7 @@
 
 
 # Companion file for the Seminar ON PCA given by Martin Talbot Jan 2016
+# Adaptations by Marie de Léséleuc Feb 2016
 
 ###########
 # Slide 2 #
@@ -57,34 +58,45 @@ summary(mydata.sub.pca)
 ?PCA
 
  # 4 first dimensions account for 68% of variance
- # 5 first dimensions account for 80% of variance
+ # 5 first dimensions account for 80% of variance  
 
-library(installr)
-updateR()
+# http://www.sthda.com/english/wiki/principal-component-analysis-how-to-reveal-the-most-important-variables-in-your-data-r-software-and-data-mining 
+
+eigenvalues <- mydata.sub.pca$eig
+head(eigenvalues[, 1:2])
 
 library(devtools)
 install_github("kassambara/factoextra")
 library("factoextra")
-fviz_screeplot(mydata.sub.pca, ncp=4)
+fviz_screeplot(mydata.sub.pca, ncp=7)
 
 ############
 # Slide 12 #
 ############
-summary(mydata.sub.pca, nbelement=166, ncp=4) # ncp = 5 since 4 first dim account for 68% of variance
+summary(mydata.sub.pca, nbelement=166, ncp=5) # ncp = 5 since 5 first dim account for 80% of variance
+
+head(mydata.sub.pca$var$cos2)
 
 dimdesc(mydata.sub.pca, axe =1)
 dimdesc(mydata.sub.pca, axe =2)
 dimdesc(mydata.sub.pca, axe =3)
 dimdesc(mydata.sub.pca, axe =4)
+dimdesc(mydata.sub.pca, axe =5)
 
 ############
 # Slide 14 #
 ############
 
+# Coordinates of variables
+head(mydata.sub.pca$var$coord)
+fviz_pca_var(mydata.sub.pca)
+
+fviz_pca_var(mydata.sub.pca, col.var="cos2") +
+  scale_color_gradient2(low="white", mid="blue", 
+                        high="red", midpoint=0.5) + theme_minimal()
 
 plot(mydata.sub.pca, choix='var', cex=.7, axes=c(1,2), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
 plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
-
 
 ############
 # Slide 15 #
