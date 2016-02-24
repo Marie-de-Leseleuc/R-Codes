@@ -1,0 +1,195 @@
+
+
+# Companion file for the Seminar ON PCA given by Martin Talbot Jan 2016
+
+###########
+# Slide 2 #
+###########
+rm(list = ls())
+#install.packages("reshape")
+#install.packages("multcomp")
+#install.packages("vcd")
+#install.packages("Rcpp")
+#install.packages("FactoMineR")
+
+library(reshape)
+library(multcomp)
+library(vcd)
+library(Rcpp)
+library(FactoMineR)
+
+# setting path to access my csv file
+setwd("C:\\Users\\mdeleseleuc\\Documents")
+mydata<- read.csv(file="PCA.csv",head=TRUE,sep=";")
+mydata <- mydata[1:8,]
+head(mydata)
+
+str(mydata)
+
+# remove undesirable dimensions from mydata and cast dimensions as numerical or categorical (factor)
+
+mydata.sub <- mydata[,2:length(mydata)]
+
+for (i in 1:2) {
+  mydata.sub[,i] <- as.factor(mydata.sub[,i])
+} 
+
+for (i in 3:166) {
+  mydata.sub[,i] <- as.numeric(mydata.sub[,i])
+} 
+   
+str(mydata.sub)
+
+# variable are numbered to refer to them in PCA
+
+var.rank <- data.frame(Variable = names(mydata.sub), Rank = 1:166)
+
+###########
+# Slide 4 #
+###########
+summary(mydata.sub)
+
+###########
+# Slide 7 #
+###########
+mydata.sub.pca <- PCA(mydata.sub, scale.unit = TRUE, quali.sup = 1:2, graph=FALSE)
+summary(mydata.sub.pca)
+?PCA
+
+ # 4 first dimensions account for 68% of variance
+ # 5 first dimensions account for 80% of variance
+
+ # 8 rows + > 150 var -> 19.5   
+
+library(installr)
+updateR()
+
+library("factoextra")
+fviz_screeplot(mydata.sub.pca, ncp=4)
+
+############
+# Slide 12 #
+############
+summary(mydata.sub.pca, nbelement=166, ncp=4) # ncp = 5 since 4 first dim account for 68% of variance
+
+dimdesc(mydata.sub.pca, axe =1)
+dimdesc(mydata.sub.pca, axe =2)
+dimdesc(mydata.sub.pca, axe =3)
+dimdesc(mydata.sub.pca, axe =4)
+
+############
+# Slide 14 #
+############
+
+
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(1,2), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
+
+
+############
+# Slide 15 #
+############
+?PCA
+
+
+############
+# Slide 16 #
+############
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4),  new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1), select='cos2 10')
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4),  new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1), select='cos2 0.3')
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4),  new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1), select='contrib 10')  ## try it!
+
+
+############
+# Slide 18 #
+############
+mydata.sub.pca <- PCA(mydata.sub, quali.sup = 23:50, quanti.sup = 7:22, ncp=10, graph=FALSE )
+mydata.sub.pca.hcpc <- HCPC(mydata.sub.pca) # WARNING: RStudio won't let you interact with the crossbow (use R instead)
+
+mydata.sub.famd <- FAMD(mydata.sub, sup.var = c(0:6, 23:30), ncp=10, graph=FALSE )
+?FAMD
+mydata.sub.famd.hcpc <- HCPC(mydata.sub.famd)
+
+names(mydata.sub.pca.hcpc) # same results for FAMD 
+
+
+############
+# Slide 21 #
+############
+mydata.sub.pca.hcpc$desc.var  # for everything or..
+
+# easier to analyze when Category and quanti of the same dimensions are grouped together.
+mydata.sub.pca.hcpc$desc.var$quanti$`1`
+mydata.sub.pca.hcpc$desc.var$category$`1`
+
+
+############
+# Slide 22 #
+############
+# Dim1
+mydata.sub.pca.hcpc$desc.var$quanti$`1`
+mydata.sub.pca.hcpc$desc.var$category$`1`
+
+# Dim2
+mydata.sub.pca.hcpc$desc.var$quanti$`2`
+mydata.sub.pca.hcpc$desc.var$category$`2`
+
+# Dim 3
+mydata.sub.pca.hcpc$desc.var$quanti$`3`
+mydata.sub.pca.hcpc$desc.var$category$`3`
+
+# Dim 4
+mydata.sub.pca.hcpc$desc.var$quanti$`4`
+mydata.sub.pca.hcpc$desc.var$category$`4`
+
+# Dim 5
+mydata.sub.pca.hcpc$desc.var$quanti$`5`
+mydata.sub.pca.hcpc$desc.var$category$`5`
+
+
+# Hint: use this to sort categories and quanti varaiables by v.test in absolute decreasing order
+mydata.sub.pca.hcpc$desc.var$category$`2`[order(-abs(mydata.sub.pca.hcpc$desc.var$category$`2`[,5])),] 
+mydata.sub.pca.hcpc$desc.var$quanti$`2`[order(-abs(mydata.sub.pca.hcpc$desc.var$quanti$`2`[,1])),] 
+
+
+############
+# Slide 23 #
+############
+mydata.sub.pca.hcpc$desc.ind
+
+
+############
+# Slide 24 #
+############
+data.frame(t(mydata.sub[1,]), t(mydata.sub[11,]), t(mydata.sub[4,]), t(mydata.sub[10,]), t(mydata.sub[8,]))
+
+
+############
+# Slide 25 #
+############
+# Dim1
+mydata.sub.famd.hcpc$desc.var$quanti$`1`
+mydata.sub.famd.hcpc$desc.var$category$`1`
+
+# Dim2
+mydata.sub.famd.hcpc$desc.var$quanti$`2`
+mydata.sub.famd.hcpc$desc.var$category$`2`
+
+# Dim 3
+mydata.sub.famd.hcpc$desc.var$quanti$`3`
+mydata.sub.famd.hcpc$desc.var$category$`3`
+
+
+############
+# Slide 26 #
+############
+mydata.sub.famd.hcpc$desc.ind
+
+
+############
+# Slide 27 #
+############
+data.frame(t(mydata.sub[199,]), t(mydata.sub[16,]), t(mydata.sub[67,]), t(mydata.sub[24,]), t(mydata.sub[196,]))
+
+
+##################### EOF #####################.
