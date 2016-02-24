@@ -59,11 +59,11 @@ summary(mydata.sub.pca)
  # 4 first dimensions account for 68% of variance
  # 5 first dimensions account for 80% of variance
 
- # 8 rows + > 150 var -> 19.5   
-
 library(installr)
 updateR()
 
+library(devtools)
+install_github("kassambara/factoextra")
 library("factoextra")
 fviz_screeplot(mydata.sub.pca, ncp=4)
 
