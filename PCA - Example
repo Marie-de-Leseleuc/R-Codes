@@ -1,11 +1,8 @@
 
+# PCA tuto: http://www.sthda.com/english/wiki/principal-component-analysis-how-to-reveal-the-most-important-variables-in-your-data-r-software-and-data-mining
 
-# Companion file for the Seminar ON PCA given by Martin Talbot Jan 2016
-# Adaptations by Marie de Léséleuc Feb 2016
+# Marie de Léséleuc Feb 2016
 
-###########
-# Slide 2 #
-###########
 rm(list = ls())
 #install.packages("reshape")
 #install.packages("multcomp")
@@ -38,41 +35,36 @@ for (i in 1:2) {
 for (i in 3:166) {
   mydata.sub[,i] <- as.numeric(mydata.sub[,i])
 } 
-   
+
 str(mydata.sub)
 
 # variable are numbered to refer to them in PCA
 
 var.rank <- data.frame(Variable = names(mydata.sub), Rank = 1:166)
 
-###########
-# Slide 4 #
-###########
+# Summary data
 summary(mydata.sub)
 
-###########
-# Slide 7 #
-###########
+# Run PCA 
 mydata.sub.pca <- PCA(mydata.sub, scale.unit = TRUE, quali.sup = 1:2, graph=FALSE)
 summary(mydata.sub.pca)
-?PCA
 
- # 4 first dimensions account for 68% of variance
- # 5 first dimensions account for 80% of variance  
+  # 4 first dimensions account for 68% of variance
+  # 5 first dimensions account for 80% of variance  
 
-# http://www.sthda.com/english/wiki/principal-component-analysis-how-to-reveal-the-most-important-variables-in-your-data-r-software-and-data-mining 
+# Proportion of variation retained by the PCs
 
 eigenvalues <- mydata.sub.pca$eig
 head(eigenvalues[, 1:2])
+
+# Visualization of importance of PCs
 
 library(devtools)
 install_github("kassambara/factoextra")
 library("factoextra")
 fviz_screeplot(mydata.sub.pca, ncp=7)
 
-############
-# Slide 12 #
-############
+# Take a look at the important dimensions
 summary(mydata.sub.pca, nbelement=166, ncp=5) # ncp = 5 since 5 first dim account for 80% of variance
 
 head(mydata.sub.pca$var$cos2)
@@ -83,125 +75,58 @@ dimdesc(mydata.sub.pca, axe =3)
 dimdesc(mydata.sub.pca, axe =4)
 dimdesc(mydata.sub.pca, axe =5)
 
-############
-# Slide 14 #
-############
 
 # Coordinates of variables
 head(mydata.sub.pca$var$coord)
 fviz_pca_var(mydata.sub.pca)
 
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(1,2), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
+plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
+
+
+# Quality of the representation for var.
+
+head(mydata.sub.pca$var$cos2)
+
+  # The closer to the circle of correlations, the better
+
 fviz_pca_var(mydata.sub.pca, col.var="cos2") +
   scale_color_gradient2(low="white", mid="blue", 
                         high="red", midpoint=0.5) + theme_minimal()
 
-plot(mydata.sub.pca, choix='var', cex=.7, axes=c(1,2), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
-plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4), new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1))
+# Contribution of the variables to the principal component
 
-############
-# Slide 15 #
-############
-?PCA
+ # The highest the contribution with the first PCs, the more important the var. 
+head(mydata.sub.pca$var$contrib, 10)
 
+ # most important variables: 
 
-############
-# Slide 16 #
-############
-plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4),  new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1), select='cos2 10')
-plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4),  new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1), select='cos2 0.3')
-plot(mydata.sub.pca, choix='var', cex=.7, axes=c(3,4),  new.plot = TRUE , xlim=range(-1:1), ylim=range(-1:1), select='contrib 10')  ## try it!
+ # var. above red line = important to component
+ # Contribution to PC1
 
+x <- fviz_contrib(mydata.sub.pca, choice = "var", axes = 1) 
+mydata.sub.pca.PC1.var <- data.frame(x$data[which(x$data$val > 0.75),1]) # 0.75 = red line
 
-############
-# Slide 18 #
-############
-mydata.sub.pca <- PCA(mydata.sub, quali.sup = 23:50, quanti.sup = 7:22, ncp=10, graph=FALSE )
-mydata.sub.pca.hcpc <- HCPC(mydata.sub.pca) # WARNING: RStudio won't let you interact with the crossbow (use R instead)
+ # Contribution to PC2
 
-mydata.sub.famd <- FAMD(mydata.sub, sup.var = c(0:6, 23:30), ncp=10, graph=FALSE )
-?FAMD
-mydata.sub.famd.hcpc <- HCPC(mydata.sub.famd)
+y <- fviz_contrib(mydata.sub.pca, choice = "var", axes = 2)
+mydata.sub.pca.PC2.var <- data.frame(y$data[which(y$data$val > 0.67),1])
 
-names(mydata.sub.pca.hcpc) # same results for FAMD 
+ # Total contribution on PC1 and PC2
+z <- fviz_contrib(mydata.sub.pca, choice = "var", axes = 1:2)
+mydata.sub.pca.PC1PC2.var <- data.frame(z$data[which(z$data$val > 37),1])
 
+ # Show only important variables
 
-############
-# Slide 21 #
-############
-mydata.sub.pca.hcpc$desc.var  # for everything or..
+fviz_contrib(mydata.sub.pca, choice = "var", axes = 1, top = 50)
+fviz_contrib(mydata.sub.pca, choice = "var", axes = 2, top = 50)
 
-# easier to analyze when Category and quanti of the same dimensions are grouped together.
-mydata.sub.pca.hcpc$desc.var$quanti$`1`
-mydata.sub.pca.hcpc$desc.var$category$`1`
+ # Control variable colors using their contributions
+fviz_pca_var(mydata.sub.pca, col.var="contrib")
+
+# Change the gradient color
+ fviz_pca_var(mydata.sub.pca, col.var="contrib") +
+   scale_color_gradient2(low="white", mid="blue", 
+                         high="red", midpoint=50) + theme_minimal()
 
 
-############
-# Slide 22 #
-############
-# Dim1
-mydata.sub.pca.hcpc$desc.var$quanti$`1`
-mydata.sub.pca.hcpc$desc.var$category$`1`
-
-# Dim2
-mydata.sub.pca.hcpc$desc.var$quanti$`2`
-mydata.sub.pca.hcpc$desc.var$category$`2`
-
-# Dim 3
-mydata.sub.pca.hcpc$desc.var$quanti$`3`
-mydata.sub.pca.hcpc$desc.var$category$`3`
-
-# Dim 4
-mydata.sub.pca.hcpc$desc.var$quanti$`4`
-mydata.sub.pca.hcpc$desc.var$category$`4`
-
-# Dim 5
-mydata.sub.pca.hcpc$desc.var$quanti$`5`
-mydata.sub.pca.hcpc$desc.var$category$`5`
-
-
-# Hint: use this to sort categories and quanti varaiables by v.test in absolute decreasing order
-mydata.sub.pca.hcpc$desc.var$category$`2`[order(-abs(mydata.sub.pca.hcpc$desc.var$category$`2`[,5])),] 
-mydata.sub.pca.hcpc$desc.var$quanti$`2`[order(-abs(mydata.sub.pca.hcpc$desc.var$quanti$`2`[,1])),] 
-
-
-############
-# Slide 23 #
-############
-mydata.sub.pca.hcpc$desc.ind
-
-
-############
-# Slide 24 #
-############
-data.frame(t(mydata.sub[1,]), t(mydata.sub[11,]), t(mydata.sub[4,]), t(mydata.sub[10,]), t(mydata.sub[8,]))
-
-
-############
-# Slide 25 #
-############
-# Dim1
-mydata.sub.famd.hcpc$desc.var$quanti$`1`
-mydata.sub.famd.hcpc$desc.var$category$`1`
-
-# Dim2
-mydata.sub.famd.hcpc$desc.var$quanti$`2`
-mydata.sub.famd.hcpc$desc.var$category$`2`
-
-# Dim 3
-mydata.sub.famd.hcpc$desc.var$quanti$`3`
-mydata.sub.famd.hcpc$desc.var$category$`3`
-
-
-############
-# Slide 26 #
-############
-mydata.sub.famd.hcpc$desc.ind
-
-
-############
-# Slide 27 #
-############
-data.frame(t(mydata.sub[199,]), t(mydata.sub[16,]), t(mydata.sub[67,]), t(mydata.sub[24,]), t(mydata.sub[196,]))
-
-
-##################### EOF #####################.
