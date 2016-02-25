@@ -129,4 +129,24 @@ fviz_pca_var(mydata.sub.pca, col.var="contrib")
    scale_color_gradient2(low="white", mid="blue", 
                          high="red", midpoint=50) + theme_minimal()
 
+# Dimension description
 
+ # Use dimdesc() to identify the most correlated var. with a given PC
+
+pca.desc <- dimdesc(mydata.sub.pca, axes = c(1,2,3,4))
+# Description of dimension 1
+x <- pca.desc$Dim.1
+str(x)
+
+x <- list(x)
+x <- na.omit(x)
+x <- x[order(x$quanti.p.value),]
+
+# Description of dimension 2
+pca.desc$Dim.2
+
+# Description of dimension 3
+pca.desc$Dim.3
+
+# Description of dimension 4
+pca.desc$Dim.4
