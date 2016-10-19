@@ -1,0 +1,57 @@
+
+Source: Standford University Statistical Learning
+
+library(MASS)
+library(ISLR)
+
+### Simple linear regression
+
+names(Boston)
+?Boston
+plot(medv~lstat,Boston)
+fit1=lm(medv~lstat,data=Boston)
+fit1
+summary(fit1)
+abline(fit1,col="red")
+names(fit1)
+confint(fit1)
+predict(fit1,data.frame(lstat=c(5,10,15)),interval="confidence")
+
+### Multiple linear regression
+
+fit2=lm(medv~lstat+age,data=Boston)
+summary(fit2)
+fit3=lm(medv~.,Boston)
+summary(fit3)
+par(mfrow=c(2,2))
+plot(fit3)
+fit4=update(fit3,~.-age-indus)
+summary(fit4)
+
+# Residuals vs. Fitted = fitted value vs. distance of each point to regression line.
+# The plot is used to detect non-linearity, unequal error variances, and outliers.
+# the residual = 0 line corresponds to the estimated regression line.
+
+# Here are the characteristics of a well-behaved residual vs. fits plot and what they suggest 
+# about the appropriateness of the simple linear regression model:
+  
+# The residuals "bounce randomly" around the 0 line. This suggests that the assumption that the relationship is 
+ # linear is reasonable.
+# The residuals roughly form a "horizontal band" around the 0 line. This suggests that the variances of the error terms 
+ # are equal.
+# No one residual "stands out" from the basic random pattern of residuals. This suggests that there are no outliers.
+
+# Source = https://onlinecourses.science.psu.edu/stat501/node/36
+
+# Q(uantile) - Q(uantile) plot = graphical tool to help us assess if a set of data plausibly came 
+  # from some theoretical distribution such as a Normal or exponential
+# A Q-Q plot is a scatterplot created by plotting two sets of quantiles against one another. 
+# If both sets of quantiles came from the same distribution, we should see the points forming a line that’s roughly 
+  # straight.
+  # i.e. if want to test if data is coming from a normal dist., compare quantiles from theorical normal dist. 
+  # and compare them to the quantiles from your dist. to see if correspond. 
+#Q-Q plots take your sample data, sort it in ascending order, and then plot them versus quantiles calculated 
+  # from a theoretical distribution. The number of quantiles is selected to match the size of your sample data. 
+
+# Source: http://data.library.virginia.edu/understanding-q-q-plots/
+
