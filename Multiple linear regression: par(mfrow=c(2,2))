@@ -55,3 +55,17 @@ summary(fit4)
 
 # Source: http://data.library.virginia.edu/understanding-q-q-plots/
 
+# Scale-Location (also called Spread-Location plot.) 
+# This plot shows if residuals are spread equally along the ranges of predictors. 
+# This is how you can check the assumption of equal variance (homoscedasticity). 
+# It’s good if you see a horizontal line with equally (randomly) spread points.
+
+# Residuals vs. Levarage 
+
+# This plot helps us to find influential cases (i.e., subjects) if any. 
+# Not all outliers are influential in linear regression analysis (whatever outliers mean).
+# We watch out for outlying values at the upper right corner or at the lower right corner. 
+# Those spots are the places where cases can be influential against a regression line. 
+# Look for cases outside of a dashed line, Cook’s distance.
+
+# Source: http://data.library.virginia.edu/diagnostic-plots/ 
