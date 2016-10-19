@@ -1,6 +1,3 @@
-
-Source: Standford University Statistical Learning
-
 library(MASS)
 library(ISLR)
 
@@ -15,18 +12,20 @@ summary(fit1)
 abline(fit1,col="red")
 names(fit1)
 confint(fit1)
-predict(fit1,data.frame(lstat=c(5,10,15)),interval="confidence")
+predict(fit1,data.frame(lstat=c(5,10,15)),interval="confidence") #Provide CIs 
 
 ### Multiple linear regression
 
-fit2=lm(medv~lstat+age,data=Boston)
+fit2=lm(medv~lstat+age,data=Boston) # R^2 = percentage of variance explained
+                                    # F-stat = f stat that will obtain if dropped out both of the predictors
 summary(fit2)
-fit3=lm(medv~.,Boston)
+fit3=lm(medv~.,Boston) # ~. = use all other variables
 summary(fit3)
-par(mfrow=c(2,2))
-plot(fit3)
-fit4=update(fit3,~.-age-indus)
+par(mfrow=c(2,2)) 
+plot(fit3)         # Non-linarity observed in R. vs. F. plot
+fit4=update(fit3,~.-age-indus) # get rid of age and indus (less significant)
 summary(fit4)
+plot(fit4)
 
 # Residuals vs. Fitted = fitted value vs. distance of each point to regression line.
 # The plot is used to detect non-linearity, unequal error variances, and outliers.
@@ -42,6 +41,7 @@ summary(fit4)
 # No one residual "stands out" from the basic random pattern of residuals. This suggests that there are no outliers.
 
 # Source = https://onlinecourses.science.psu.edu/stat501/node/36
+
 
 # Q(uantile) - Q(uantile) plot = graphical tool to help us assess if a set of data plausibly came 
   # from some theoretical distribution such as a Normal or exponential
@@ -60,6 +60,7 @@ summary(fit4)
 # This is how you can check the assumption of equal variance (homoscedasticity). 
 # It’s good if you see a horizontal line with equally (randomly) spread points.
 
+
 # Residuals vs. Levarage 
 
 # This plot helps us to find influential cases (i.e., subjects) if any. 
@@ -69,3 +70,51 @@ summary(fit4)
 # Look for cases outside of a dashed line, Cook’s distance.
 
 # Source: http://data.library.virginia.edu/diagnostic-plots/ 
+
+
+### Nonlinear terms and Interactions
+
+fit5=lm(medv~lstat*age,Boston) # interaction between age and lstat
+summary(fit5)
+fit6=lm(medv~lstat +I(lstat^2),Boston); summary(fit6) # Add quadratic term
+# I(x): Change the class of an object to indicate that it should be treated ‘as is’.
+# used to inhibit the interpretation of operators such as "+", "-", "*" and "^" as formula operators, 
+ # so they are used as arithmetical operators
+attach(Boston) # Names variables in Boston are available in our data space
+par(mfrow=c(1,1))
+plot(medv~lstat)
+points(lstat,fitted(fit6),col="red",pch=20) # add fitted points (from quadratic model 6)
+fit7=lm(medv~poly(lstat,4)) # Easier way of fitting polynomials (here of degree four)
+points(lstat,fitted(fit7),col="blue",pch=20) # Polynomial is a bit too wiggly (overfitting the data a little bit)
+plot(1:20,1:20,pch=1:20,cex=2) # list of pch ; cex = 2 means enlarged characters by two
+
+###Qualitative predictors
+
+# carseats = another dataset 
+fix(Carseats) # fix = way of throwing up an editor in R
+names(Carseats)
+summary(Carseats)
+fit1=lm(Sales~.+Income:Advertising+Age:Price,Carseats) #Add interactions between income and ad/ between age and price
+summary(fit1) # Income/ad significant but not age/price
+contrasts(Carseats$ShelveLoc) # shows how R will code qualitative variable ShelveLoc when put in linear model
+# in this case, 3 level factor i.e put in two dummy variables.
+
+###Writing R functions (to fit a regression model and make a plot)
+regplot=function(x,y){ # regplot is function of x and y (arguments)
+  fit=lm(y~x) # fit linear model between x and y 
+  plot(x,y) # plot xy
+  abline(fit,col="red") # add red regression line  
+}
+attach(Carseats)
+regplot(Price,Sales)
+
+regplot=function(x,y,...){ # ... = unnamed arguments. You are allowed to add extra arguments. 
+  fit=lm(y~x) 
+  plot(x,y,...)
+  abline(fit,col="red")
+}
+regplot(Price,Sales,xlab="Price",ylab="Sales",col="blue",pch=20)
+
+
+
+
