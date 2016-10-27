@@ -5,7 +5,7 @@
 # Source2: http://www.ats.ucla.edu/stat/r/dae/logit.htm
 
 setwd("C:\\Users\\mdeleseleuc\\Documents")
-mydata<- read.csv(file="PraxisPurchasesAndCompletion.csv",head=TRUE,sep=",")
+mydata<- read.csv(file="name.csv",head=TRUE,sep=",")
 head(mydata)
 
   ----- # Part 1 -----
@@ -26,7 +26,7 @@ head(training)
 head(testing)
 
 glm.fit=glm(iscompleter~ispayer+kills+neutralizations+deaths+
-              days+lastseen+sessions+praxispurchased+transactions+lifespan+lifetime, 
+              days+lastseen+sessions+purchased+transactions+lifespan+lifetime, 
             data=training,family="binomial")
 
  
@@ -54,7 +54,7 @@ exp(cbind(OR = coef(glm.fit), confint(glm.fit)))
   # First create and view the data frame.
 
 newdata1 <- with(mydata,
-                 data.frame(praxispurchased = mean(praxispurchased), 
+                 data.frame(purchased = mean(purchased), 
                             transactions = mean(transactions), 
                             kills = mean(kills),
                             neutralizations = mean(neutralizations),
@@ -125,7 +125,7 @@ hoslem.test(training$iscompleter, fitted(glm.fit), g=10)
 library(survey)
 
 regTermTest(glm.fit, "ispayer") # significant
-regTermTest(glm.fit, "praxispurchased") # 
+regTermTest(glm.fit, "purchased") # 
 regTermTest(glm.fit, "lifespan")
 regTermTest(glm.fit, "kills")
 
