@@ -10,7 +10,7 @@ head(mydata)
 
   ----- # Part 1 -----
 
-mydata$ispayer <- factor(mydata$ispayer)
+mydata$isy <- factor(mydata$isy)
 
 library(caret)
 library(aod)
@@ -18,14 +18,14 @@ library(ggplot2)
 library(Rcpp)
 # library(arm)
 
-Train <- createDataPartition(mydata$iscompleter, p=0.6, list=FALSE)
+Train <- createDataPartition(mydata$isx, p=0.6, list=FALSE)
 training <- mydata[Train, ]
 testing <- mydata[-Train, ]
 
 head(training)
 head(testing)
 
-glm.fit=glm(iscompleter~ispayer+kills+neutralizations+deaths+
+glm.fit=glm(isx~isy+kills+neutralizations+deaths+
               days+lastseen+sessions+purchased+transactions+lifespan+lifetime, 
             data=training,family="binomial")
 
@@ -41,7 +41,7 @@ odds_ratios = exp(coef(glm.fit))
 ## odds ratios and 95% CI
 exp(cbind(OR = coef(glm.fit), confint(glm.fit)))
 
-# for a one unit increase in ispayer1, the off of completing the game increase by a factor of 1.92
+# for a one unit increase in isy1, the off of completing the game increase by a factor of 1.92
 
 # In logistic regression the odds ratio represents the constant effect of a predictor X, 
 # on the likelihood that one outcome will occur.
@@ -49,7 +49,7 @@ exp(cbind(OR = coef(glm.fit), confint(glm.fit)))
 
   # Can also use predicted probabilities to help understand the model. 
   # Predicted probabilities can be computed for both categorical and continuous predictor variables. 
-  # start by calculating the predicted probability of admission at each value of ispayer, 
+  # start by calculating the predicted probability of admission at each value of isy, 
   # holding other variable at their means. 
   # First create and view the data frame.
 
@@ -64,11 +64,11 @@ newdata1 <- with(mydata,
                             lastseen = mean(lastseen),
                             lifetime = mean(lifetime),
                             sessions = mean(sessions),
-                            ispayer = factor(0:1)))
+                            isy = factor(0:1)))
 
 head(newdata1)
 
-newdata1$ispayerP <- predict(glm.fit, newdata = newdata1, type = "response")
+newdata1$isyP <- predict(glm.fit, newdata = newdata1, type = "response")
 newdata1
 
   ----- # Part 2 ------
@@ -84,7 +84,7 @@ glm.probs[1:5]
  # Is the model more efficient than a smaller one?
  # The null hypothesis, H_0  holds that the reduced model is true
 
-glm.fit.2=glm(iscompleter~kills+deaths, data=training,family="binomial")
+glm.fit.2=glm(isx~kills+deaths, data=training,family="binomial")
 
 library(lmtest)
 lrtest(glm.fit, glm.fit.2) # compare to smaller model
@@ -109,10 +109,10 @@ pR2(glm.fit) # look for 'McFadden'
  # indicate a poor fit. The null hypothesis holds that the model fits the data.
 
 library(MKmisc)
-HLgof.test(fit = fitted(glm.fit), obs = training$iscompleter)
+HLgof.test(fit = fitted(glm.fit), obs = training$isx)
 
 library(ResourceSelection)
-hoslem.test(training$iscompleter, fitted(glm.fit), g=10)
+hoslem.test(training$isx, fitted(glm.fit), g=10)
 
 # Tests of Individual Predictors: Wald Test
 
@@ -124,7 +124,7 @@ hoslem.test(training$iscompleter, fitted(glm.fit), g=10)
 
 library(survey)
 
-regTermTest(glm.fit, "ispayer") # significant
+regTermTest(glm.fit, "isy") # significant
 regTermTest(glm.fit, "purchased") # 
 regTermTest(glm.fit, "lifespan")
 regTermTest(glm.fit, "kills")
@@ -135,7 +135,7 @@ regTermTest(glm.fit, "kills")
  # we can also look at the absolute value of the t-statistic for each model parameter.
  # The t-statistic for each model parameter helps us determine if it's significantly different from zero.
 
-mod_fit <- train(iscompleter ~ ., data=training, method="glm", family="binomial")
+mod_fit <- train(isx ~ ., data=training, method="glm", family="binomial")
 
 varImp(mod_fit)
 
@@ -144,11 +144,11 @@ varImp(mod_fit)
  #  Regards how well the model does in predicting the target variable on out of sample observations.
 
 pred = predict(glm.fit, newdata=testing)
-accuracy <- table(pred, testing[,"iscompleter"])
+accuracy <- table(pred, testing[,"isx"])
 sum(diag(accuracy))/sum(accuracy)
 
 pred = predict(glm.fit, newdata=testing)
-confusionMatrix(data=pred, testing$iscompleter)
+confusionMatrix(data=pred, testing$isx)
 
 # Validation of Predicted Values: ROC Curve
 
@@ -157,14 +157,14 @@ confusionMatrix(data=pred, testing$iscompleter)
  # and the proportion of negative data points that are accuratecly considered as negative.
 
 library(pROC)
-# Compute AUC for predicting Class with the variable ispayer
-f1 = roc(iscompleter ~ ispayer, data=training)
+# Compute AUC for predicting Class with the variable isy
+f1 = roc(isx ~ isy, data=training)
 plot(f1, col="red")
 
 library(ROCR)
 # Compute AUC for predicting Class with the model
 prob <- predict(glm.fit, newdata=testing, type="response")
-pred <- prediction(prob, testing$iscompleter)
+pred <- prediction(prob, testing$isx)
 perf <- performance(pred, measure = "tpr", x.measure = "fpr")
 plot(perf)
 
